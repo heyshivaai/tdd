@@ -1,0 +1,15 @@
+{
+  "lenses": [
+    { "id": "Architecture",        "description": "Scalability, resilience, modularity, cloud posture" },
+    { "id": "Codebase",            "description": "Code quality, technical debt, language/framework choices" },
+    { "id": "Security",            "description": "Vulnerabilities, compliance (SOC2, HITRUST, GDPR), data governance" },
+    { "id": "Product",             "description": "Roadmap realism, feature velocity, PMF signals" },
+    { "id": "DevOps",              "description": "CI/CD maturity, observability, incident response, SLAs" },
+    { "id": "Team",                "description": "Structure, seniority mix, key-person risk, hiring velocity" },
+    { "id": "Data",                "description": "Data models, quality, pipelines, AI/ML readiness" },
+    { "id": "CommercialTech",      "description": "Licensing, vendor lock-in, IP ownership" },
+    { "id": "AIMLReadiness",       "description": "AI/ML capabilities, data strategy, model governance" },
+    { "id": "RegulatoryCompliance","description": "HIPAA, SOC2, ISO27001, sector-specific compliance posture" },
+    { "id": "FinancialCost",       "description": "Infrastructure cost, licensing costs, cost efficiency signals" }
+  ]
+}

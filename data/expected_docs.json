@@ -1,0 +1,19 @@
+{
+  "pe-acquisition": {
+    "healthcare-saas": [
+      { "id": "ED-001", "name": "Penetration test — primary application",        "urgency": "CRITICAL" },
+      { "id": "ED-002", "name": "SOC 2 Type 2 report (within 12 months)",         "urgency": "CRITICAL" },
+      { "id": "ED-003", "name": "HIPAA risk assessment",                           "urgency": "CRITICAL" },
+      { "id": "ED-004", "name": "Disaster recovery plan",                          "urgency": "HIGH" },
+      { "id": "ED-005", "name": "Business continuity plan",                        "urgency": "HIGH" },
+      { "id": "ED-006", "name": "Information security policy",                     "urgency": "HIGH" },
+      { "id": "ED-007", "name": "System architecture diagram",                     "urgency": "HIGH" },
+      { "id": "ED-008", "name": "Data flow diagram (including PHI flows)",         "urgency": "HIGH" },
+      { "id": "ED-009", "name": "SDLC documentation",                              "urgency": "MEDIUM" },
+      { "id": "ED-010", "name": "Vendor / third-party software list",              "urgency": "MEDIUM" },
+      { "id": "ED-011", "name": "Cloud infrastructure cost breakdown",             "urgency": "MEDIUM" },
+      { "id": "ED-012", "name": "Org chart — technology team",                     "urgency": "MEDIUM" },
+      { "id": "ED-013", "name": "Product roadmap (12-month)",                      "urgency": "MEDIUM" }
+    ]
+  }
+}
