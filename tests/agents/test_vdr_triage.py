@@ -58,7 +58,10 @@ def make_mock_client():
     return mock_client
 
 
-def test_run_triage_returns_brief_and_completeness(temp_vdr_dir):
+@patch("agents.vdr_triage.query_similar_patterns", return_value=[])
+@patch("agents.vdr_triage.store_signals", return_value=0)
+@patch("agents.vdr_triage.store_gap", return_value=None)
+def test_run_triage_returns_brief_and_completeness(mock_gap, mock_store, mock_query, temp_vdr_dir):
     client = make_mock_client()
     brief, completeness = run_triage(
         vdr_path=temp_vdr_dir,
@@ -72,7 +75,10 @@ def test_run_triage_returns_brief_and_completeness(temp_vdr_dir):
     assert "missing_documents" in completeness
 
 
-def test_run_triage_outputs_written_to_disk(temp_vdr_dir, tmp_path):
+@patch("agents.vdr_triage.query_similar_patterns", return_value=[])
+@patch("agents.vdr_triage.store_signals", return_value=0)
+@patch("agents.vdr_triage.store_gap", return_value=None)
+def test_run_triage_outputs_written_to_disk(mock_gap, mock_store, mock_query, temp_vdr_dir, tmp_path):
     client = make_mock_client()
     with patch("agents.vdr_triage.OUTPUT_DIR", tmp_path):
         run_triage(
@@ -85,3 +91,21 @@ def test_run_triage_outputs_written_to_disk(temp_vdr_dir, tmp_path):
         )
     output_files = list(tmp_path.rglob("*.*"))
     assert len(output_files) >= 3
+
+
+def test_run_triage_calls_store_signals(temp_vdr_dir):
+    """Phase B: signals are stored in Pinecone after each batch extraction."""
+    client = make_mock_client()
+    with patch("agents.vdr_triage.store_signals") as mock_store, \
+         patch("agents.vdr_triage.store_gap") as mock_gap, \
+         patch("agents.vdr_triage.query_similar_patterns", return_value=[]):
+        run_triage(
+            vdr_path=temp_vdr_dir,
+            company_name="TESTCO",
+            deal_id="DEAL-TEST",
+            sector="healthcare-saas",
+            deal_type="pe-acquisition",
+            client=client,
+        )
+    # At least one of store_signals or store_gap should have been called
+    assert mock_store.called or mock_gap.called

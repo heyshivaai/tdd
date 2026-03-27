@@ -34,6 +34,7 @@ from tools.report_writer import (
     write_triage_report,
 )
 from tools.signal_extractor import extract_signals_from_batch
+from tools.signal_store import query_similar_patterns, store_gap, store_signals
 from tools.structure_mapper import map_vdr_structure
 
 load_dotenv()
@@ -107,17 +108,31 @@ def run_triage(
             )
             continue
 
+        # Phase B: Query Signal Intelligence Layer for prior patterns
+        prior_patterns = query_similar_patterns(
+            query_text=f"{sector} {batch_id} signals",
+            sector=sector,
+            lens=None,
+            top_k=3,
+        )
+
         batch_result = extract_signals_from_batch(
             batch_id=batch_id,
             documents=enriched_docs,
             company_name=company_name,
             sector=sector,
             deal_type=deal_type,
-            prior_patterns=[],  # Phase B: Pinecone query injected here
+            prior_patterns=prior_patterns,
             client=client,
         )
         all_batch_results.append(batch_result)
-        logger.info("  Batch %s: %d signals extracted", batch_id, len(batch_result.get("signals", [])))
+        signal_count = len(batch_result.get("signals", []))
+        logger.info("  Batch %s: %d signals extracted, %d prior patterns used",
+                    batch_id, signal_count, len(prior_patterns))
+
+        # Store signals in Signal Intelligence Layer
+        if batch_result.get("signals"):
+            store_signals(batch_result["signals"], deal_id=deal_id, sector=sector, phase=0)
 
     logger.info("Step 4: Cross-referencing into VDR Intelligence Brief")
     brief = cross_reference_signals(
@@ -130,6 +145,10 @@ def run_triage(
         deal_id=deal_id,
         client=client,
     )
+
+    # Store completeness gaps in Signal Intelligence Layer
+    for gap in completeness.get("missing_documents", []):
+        store_gap(gap, deal_id=deal_id, sector=sector)
 
     logger.info("Writing outputs to %s/%s/", OUTPUT_DIR, company_name)
     write_intelligence_brief(brief, OUTPUT_DIR)
