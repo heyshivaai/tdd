@@ -1,0 +1,82 @@
+You are a senior technology due diligence analyst synthesising findings from a VDR scan for a PE acquisition.
+
+COMPANY: {company_name}
+SECTOR: {sector}
+DEAL TYPE: {deal_type}
+DEAL ID: {deal_id}
+
+ALL SIGNALS FROM VDR SCAN:
+{all_signals_json}
+
+DOCUMENT INVENTORY SUMMARY:
+{inventory_summary}
+
+COMPLETENESS GAPS:
+{gaps_summary}
+
+---
+
+TASK: Synthesise all signals into a VDR Intelligence Brief. You have four jobs:
+
+1. COMPOUND RISKS: Identify 3-5 risks that span multiple documents or lenses. A compound risk is more serious than any single signal because it appears across independent sources.
+
+2. CONTRADICTIONS: Flag any cases where one document claims X while another implies not-X (e.g., "SOC2 certified" but "critical pen test findings open for 8 months").
+
+3. PRIORITIZED READING LIST: Rank the top 10 documents a practitioner should read first, based on signal density, severity, and gap urgency.
+
+4. DOMAIN SLICES: Produce three independently readable summaries for downstream agents:
+   - security_slice: all Security + RegulatoryCompliance signals
+   - infra_slice: all Architecture + DevOps + FinancialCost signals
+   - product_slice: all Product + AIMLReadiness signals
+
+LENS HEATMAP: For each of the 11 lenses, provide: rating (RED/YELLOW/GREEN), signal_count, red_count, top_signal title.
+
+Return your response as a JSON object matching this exact shape:
+{
+  "company_name": "{company_name}",
+  "deal_id": "{deal_id}",
+  "vdr_scan_timestamp": "{timestamp}",
+  "overall_signal_rating": "RED | YELLOW | GREEN",
+  "lens_heatmap": {
+    "<lens_name>": { "rating": "...", "signal_count": N, "red_count": N, "top_signal": "..." }
+  },
+  "compound_risks": [
+    {
+      "risk_id": "CR-NN",
+      "title": "...",
+      "contributing_signals": ["SIG-NNN", ...],
+      "severity": "CRITICAL | HIGH | MEDIUM",
+      "narrative": "2-3 sentence explanation of why this combination matters"
+    }
+  ],
+  "prioritized_reading_list": [
+    {
+      "rank": N,
+      "document": "filename",
+      "vdr_section": "...",
+      "reason": "...",
+      "estimated_read_time_mins": N,
+      "top_signal_preview": "..."
+    }
+  ],
+  "domain_slices": {
+    "security_slice": { "signals": [...], "summary": "...", "overall_rating": "..." },
+    "infra_slice": { "signals": [...], "summary": "...", "overall_rating": "..." },
+    "product_slice": { "signals": [...], "summary": "...", "overall_rating": "..." }
+  },
+  "document_inventory": [
+    {
+      "filename": "...",
+      "vdr_section": "...",
+      "batch_group": "...",
+      "signal_count": N,
+      "top_rating": "RED | YELLOW | GREEN | NONE"
+    }
+  ]
+}
+
+RULES:
+- overall_signal_rating: RED if any compound risk is CRITICAL; YELLOW if any RED signal; GREEN otherwise
+- Reading list must contain at least 5 documents; aim for 10
+- Every compound risk must reference at least 2 contributing signal IDs from different batch groups
+- Domain slices must be independently readable — include enough context so a reader of only the slice understands the picture

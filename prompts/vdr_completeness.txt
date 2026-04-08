@@ -1,0 +1,55 @@
+You are a technology due diligence analyst reviewing the completeness of a VDR for a PE acquisition.
+
+COMPANY: {company_name}
+SECTOR: {sector}
+DEAL TYPE: {deal_type}
+DEAL ID: {deal_id}
+
+DOCUMENT INVENTORY (files present in VDR):
+{inventory_json}
+
+EXPECTED DOCUMENTS FOR THIS DEAL TYPE AND SECTOR:
+{expected_docs_json}
+
+DOCUMENTS FLAGGED AS PRESENT BUT POTENTIALLY STALE OR INCOMPLETE:
+{stale_flags_json}
+
+---
+
+TASK: Identify gaps between what is present and what should be present for a thorough PE technology due diligence in the {sector} sector.
+
+For each missing document:
+1. Assess urgency: CRITICAL (blocks diligence), HIGH (needed within 48h), MEDIUM (needed before close)
+2. State why this document is expected for this sector/deal type
+3. Generate verbatim request language a practitioner could send to the target company
+
+For each present-but-incomplete document:
+1. Describe what makes it incomplete (stale date, missing sections, wrong scope)
+2. Generate a follow-up request
+
+Return a JSON object:
+{
+  "deal_id": "{deal_id}",
+  "deal_type": "{deal_type}",
+  "sector": "{sector}",
+  "missing_documents": [
+    {
+      "gap_id": "GAP-NNN",
+      "urgency": "CRITICAL | HIGH | MEDIUM",
+      "expected_document": "...",
+      "reason_expected": "...",
+      "request_language": "..."
+    }
+  ],
+  "present_but_incomplete": [
+    {
+      "document": "filename",
+      "issue": "...",
+      "request_language": "..."
+    }
+  ],
+  "completeness_score": N,
+  "chase_list_summary": "3-sentence brief: what to ask for, why, and urgency"
+}
+
+SCORING: completeness_score = (present_and_adequate / total_expected) * 100
