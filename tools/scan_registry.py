@@ -10,7 +10,7 @@ Storage: JSON file at outputs/_scan_registry.json. Each key is a company name.
 """
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -82,6 +82,14 @@ def register_scan(
             "signals_found": 0,
             "doc_count": 0,
             "batches_resumed": 0,
+        },
+        "timing": {
+            "batch_times": [],        # seconds per completed batch
+            "current_batch_start": None,
+            "avg_batch_seconds": None,
+            "eta_seconds": None,      # estimated seconds remaining
+            "eta_iso": None,          # estimated completion time (ISO string)
+            "elapsed_seconds": 0,
         },
         "started_at": now,
         "updated_at": now,
@@ -186,6 +194,89 @@ def cleanup_stale_scans(max_age_hours: int = 24) -> int:
         _save_registry(registry)
 
     return len(stale)
+
+
+def start_batch_timer(company_name: str) -> Optional[dict]:
+    """
+    Mark the start of a batch extraction so we can measure its duration.
+
+    Args:
+        company_name: Company name key.
+
+    Returns:
+        Updated record, or None if not found.
+    """
+    registry = _load_registry()
+    if company_name not in registry:
+        return None
+    record = registry[company_name]
+    record.setdefault("timing", {})
+    record["timing"]["current_batch_start"] = datetime.now(timezone.utc).isoformat()
+    record["updated_at"] = datetime.now(timezone.utc).isoformat()
+    registry[company_name] = record
+    _save_registry(registry)
+    return record
+
+
+def finish_batch_timer(company_name: str) -> Optional[dict]:
+    """
+    Record a completed batch duration and recalculate ETA.
+
+    Computes average batch time from all completed batches, then multiplies
+    by remaining batches to produce an ETA.
+
+    Args:
+        company_name: Company name key.
+
+    Returns:
+        Updated record with new ETA, or None if not found.
+    """
+    registry = _load_registry()
+    if company_name not in registry:
+        return None
+
+    record = registry[company_name]
+    timing = record.setdefault("timing", {})
+    now = datetime.now(timezone.utc)
+
+    # Calculate this batch's duration
+    batch_start_str = timing.get("current_batch_start")
+    if batch_start_str:
+        try:
+            batch_start = datetime.fromisoformat(batch_start_str.replace("Z", "+00:00"))
+            batch_seconds = (now - batch_start).total_seconds()
+            batch_times = timing.setdefault("batch_times", [])
+            batch_times.append(round(batch_seconds, 1))
+        except (ValueError, TypeError):
+            pass
+
+    # Calculate elapsed since scan start
+    started_str = record.get("started_at", "")
+    try:
+        started_dt = datetime.fromisoformat(started_str.replace("Z", "+00:00"))
+        timing["elapsed_seconds"] = round((now - started_dt).total_seconds(), 1)
+    except (ValueError, TypeError):
+        pass
+
+    # Recalculate ETA
+    batch_times = timing.get("batch_times", [])
+    if batch_times:
+        avg = sum(batch_times) / len(batch_times)
+        timing["avg_batch_seconds"] = round(avg, 1)
+
+        batches_done = record.get("progress", {}).get("batches_done", 0)
+        batches_total = record.get("progress", {}).get("batches_total", 0)
+        remaining = max(0, batches_total - batches_done)
+
+        eta_seconds = round(avg * remaining)
+        timing["eta_seconds"] = eta_seconds
+        timing["eta_iso"] = (now + timedelta(seconds=eta_seconds)).isoformat()
+
+    timing["current_batch_start"] = None
+    record["updated_at"] = now.isoformat()
+    registry[company_name] = record
+    _save_registry(registry)
+    return record
 
 
 def remove_scan(company_name: str) -> bool:

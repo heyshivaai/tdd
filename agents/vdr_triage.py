@@ -33,7 +33,7 @@ from tools.report_writer import (
     write_intelligence_brief,
     write_triage_report,
 )
-from tools.scan_registry import update_scan
+from tools.scan_registry import update_scan, start_batch_timer, finish_batch_timer
 from tools.signal_extractor import extract_signals_from_batch
 from tools.signal_store import query_similar_patterns, store_gap, store_signals
 from tools.structure_mapper import map_vdr_structure
@@ -113,10 +113,14 @@ def run_triage(
     })
 
     logger.info("Step 3: Signal extraction per batch")
-    update_scan(company_name, phase="signal_extraction", progress={"step": "Step 3/4: Signal extraction"})
+    update_scan(company_name, phase="signal_extraction", progress={
+        "step": "Step 3/4: Signal extraction",
+        "batches_total": len(batch_groups),
+    })
     all_batch_results = []
     batch_index = 0
     for batch_id, docs in batch_groups.items():
+        start_batch_timer(company_name)
         enriched_docs = []
         for doc in docs:
             # Use generic extract_text which handles PDF, DOCX, XLSX, etc.
@@ -141,6 +145,7 @@ def run_triage(
                 {"batch_id": batch_id, "documents": [d["filename"] for d in docs], "signals": [], "batch_summary": ""}
             )
             batch_index += 1
+            finish_batch_timer(company_name)
             update_scan(company_name, progress={
                 "batches_done": batch_index,
                 "step": f"Step 3/4: Batch {batch_index}/{len(batch_groups)} — {batch_id} (skipped, no text)",
@@ -170,6 +175,7 @@ def run_triage(
         logger.info("  Batch %s: %d signals extracted, %d prior patterns used",
                     batch_id, signal_count, len(prior_patterns))
         batch_index += 1
+        finish_batch_timer(company_name)
         total_signals_so_far = sum(len(b.get("signals", [])) for b in all_batch_results)
         update_scan(company_name, progress={
             "batches_done": batch_index,
@@ -196,6 +202,16 @@ def run_triage(
         deal_id=deal_id,
         client=client,
     )
+
+    # ── Merge raw batch signals into the brief ──────────────────────────────
+    # The cross-referencer produces a synthesized summary (domain_slices, compound
+    # risks, rating). We also need the raw extracted signals and batch_results so
+    # the dashboard can show signal inventory, pillar counts, and per-batch detail.
+    all_signals = [sig for batch in all_batch_results for sig in batch.get("signals", [])]
+    brief["batch_results"] = all_batch_results
+    brief["signals"] = all_signals
+    brief["signal_count"] = len(all_signals)
+    brief["document_inventory"] = inventory
 
     # Store completeness gaps in Signal Intelligence Layer
     for gap in completeness.get("missing_documents", []):

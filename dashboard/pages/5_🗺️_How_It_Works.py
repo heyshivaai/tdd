@@ -229,7 +229,7 @@ st.markdown(
     '    <p class="step-name">Signal Extraction <span class="timing">15-25 min</span></p>'
     '    <p class="step-detail">'
     '      Documents are chunked and sent to Claude API in token-aware sub-batches (max 150K tokens each). '
-    '      Up to 3 concurrent calls. The v1.3 Signal Catalog (29 signals, 7 pillars) is injected into every prompt. '
+    '      Up to 3 concurrent calls. The v1.4 Signal Catalog (38 signals, 7 pillars) is injected into every prompt. '
     '      Checkpoints saved after each sub-batch — scans resume after failure.'
     '    </p>'
     '  </div>'

@@ -95,11 +95,21 @@ with col4:
 st.markdown("---")
 
 # ── Agent progress data ──────────────────────────────────────────────────────
-progress_data = get_agent_progress(selected_deal_id)
-agent_statuses = progress_data["agents"]
-completed = progress_data["completed"]
-total = progress_data["total"]
-percentage = progress_data["percentage"]
+# get_agent_progress returns a flat dict: {agent_name: {status, ...}} or empty dict
+raw_progress = get_agent_progress(selected_deal_id)
+
+# If it has the nested "agents" key (future format), use it directly;
+# otherwise build the derived fields from the flat dict.
+if "agents" in raw_progress:
+    agent_statuses = raw_progress["agents"]
+    completed = raw_progress.get("completed", 0)
+    total = raw_progress.get("total", len(AGENT_CHAIN))
+    percentage = raw_progress.get("percentage", 0)
+else:
+    agent_statuses = raw_progress
+    total = len(AGENT_CHAIN)
+    completed = sum(1 for v in agent_statuses.values() if isinstance(v, dict) and v.get("status") == "completed")
+    percentage = (completed / total * 100) if total > 0 else 0
 
 # ── Progress bar ─────────────────────────────────────────────────────────────
 st.subheader(f"Pipeline Progress: {completed}/{total} agents")

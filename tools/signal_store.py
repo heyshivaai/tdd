@@ -136,16 +136,18 @@ def query_similar_patterns(
     index = _get_index()
     if index is None:
         return []
-    query_filter: dict = {"sector": {"$eq": sector}}
-    if lens:
-        query_filter["lens"] = {"$eq": lens}
 
     try:
+        # Pinecone SDK v5+ uses search() with query dict.
+        # Filter is passed via the query dict, not as a separate kwarg.
         result = index.search(
             namespace=NAMESPACE,
-            query={"inputs": {"text": query_text}, "top_k": top_k},
+            query={
+                "inputs": {"text": query_text},
+                "top_k": top_k,
+                "filter": {"sector": {"$eq": sector}, **({"lens": {"$eq": lens}} if lens else {})},
+            },
             fields=["signal_text", "lens", "rating", "title", "deal_id"],
-            filter=query_filter,
         )
         return [
             {

@@ -141,7 +141,7 @@ if st.button("🔍 Preview VDR", disabled=not vdr_valid, type="secondary", use_c
         # Load tier config
         tiers = {}
         if BATCH_TIERS_PATH.exists():
-            with open(BATCH_TIERS_PATH) as f:
+            with open(BATCH_TIERS_PATH, encoding="utf-8") as f:
                 tier_config = json.load(f)
             tiers = tier_config.get("tiers", {})
 
@@ -398,11 +398,62 @@ if st.session_state.scan_running and st.session_state.scan_company:
             st.error(f"❌ Scan failed: {scan.get('error', 'Unknown error')}")
 
         else:
-            # Live progress
+            # ── 4-Stage Pipeline View ──────────────────────────────
             batches_done = progress.get("batches_done", 0)
             batches_total = progress.get("batches_total", 0)
             step_text = progress.get("step", f"Phase: {phase}")
 
+            # Define stages with their phase keys and icons
+            STAGES = [
+                {"key": "mapping_vdr",        "icon": "📂", "label": "Structure Map",     "desc": "Inventory all files, assign to batches"},
+                {"key": "completeness_check",  "icon": "📋", "label": "Completeness",      "desc": "Check what's present vs. expected"},
+                {"key": "signal_extraction",   "icon": "🤖", "label": "Signal Extraction",  "desc": "AI reads docs, maps to 38 signals"},
+                {"key": "cross_referencing",   "icon": "🔗", "label": "Cross-Reference",    "desc": "Compound risk analysis + brief"},
+            ]
+
+            # Determine stage status based on current phase
+            phase_order = ["starting", "mapping_vdr", "completeness_check", "signal_extraction", "cross_referencing", "writing_outputs"]
+            current_idx = phase_order.index(phase) if phase in phase_order else 0
+
+            # Render stage cards in a row
+            stage_cols = st.columns(4)
+            for i, stage in enumerate(STAGES):
+                stage_phase_idx = phase_order.index(stage["key"]) if stage["key"] in phase_order else i + 1
+                with stage_cols[i]:
+                    if current_idx > stage_phase_idx:
+                        # Completed
+                        st.markdown(
+                            f'<div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:16px;text-align:center;min-height:140px;">'
+                            f'<div style="font-size:1.5rem;">{stage["icon"]}</div>'
+                            f'<div style="font-weight:700;color:#15803d;font-size:0.9rem;margin:6px 0 4px;">✅ {stage["label"]}</div>'
+                            f'<div style="font-size:0.75rem;color:#16a34a;">{stage["desc"]}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    elif current_idx == stage_phase_idx:
+                        # Active
+                        st.markdown(
+                            f'<div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:16px;text-align:center;min-height:140px;box-shadow:0 0 12px rgba(59,130,246,0.25);">'
+                            f'<div style="font-size:1.5rem;">{stage["icon"]}</div>'
+                            f'<div style="font-weight:700;color:#1d4ed8;font-size:0.9rem;margin:6px 0 4px;">🔄 {stage["label"]}</div>'
+                            f'<div style="font-size:0.75rem;color:#2563eb;">{stage["desc"]}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        # Pending
+                        st.markdown(
+                            f'<div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;min-height:140px;opacity:0.6;">'
+                            f'<div style="font-size:1.5rem;">{stage["icon"]}</div>'
+                            f'<div style="font-weight:700;color:#94a3b8;font-size:0.9rem;margin:6px 0 4px;">⏳ {stage["label"]}</div>'
+                            f'<div style="font-size:0.75rem;color:#94a3b8;">{stage["desc"]}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+
+            st.markdown("")
+
+            # Overall progress bar
             phase_pct = {
                 "starting": 0.0,
                 "mapping_vdr": 0.05,
@@ -411,15 +462,49 @@ if st.session_state.scan_running and st.session_state.scan_company:
                 "cross_referencing": 0.85,
                 "writing_outputs": 0.95,
             }.get(phase, 0.0)
-
             st.progress(phase_pct, text=step_text)
 
+            # KPI row
             kpi1, kpi2, kpi3, kpi4 = st.columns(4)
             kpi1.metric("Documents", progress.get("doc_count", "—"))
             kpi2.metric("Batches", f"{batches_done}/{batches_total}" if batches_total else "—")
             kpi3.metric("Signals Found", progress.get("signals_found", 0))
             kpi4.metric("Completeness", f"{progress.get('completeness_score', '—')}/100")
 
+            # ── Timing & ETA row ──────────────────────────────────
+            timing = scan.get("timing", {})
+            elapsed_sec = timing.get("elapsed_seconds", 0)
+            eta_sec = timing.get("eta_seconds")
+            avg_batch = timing.get("avg_batch_seconds")
+
+            # Format elapsed as MM:SS
+            started_str = scan.get("started_at", "")
+            if started_str:
+                try:
+                    from datetime import datetime as _dt, timezone as _tz
+                    started_dt = _dt.fromisoformat(started_str.replace("Z", "+00:00"))
+                    elapsed_sec = (_dt.now(_tz.utc) - started_dt).total_seconds()
+                except (ValueError, TypeError):
+                    pass
+            elapsed_min, elapsed_s = divmod(int(elapsed_sec), 60)
+            elapsed_str = f"{elapsed_min}m {elapsed_s:02d}s"
+
+            t1, t2, t3 = st.columns(3)
+            t1.metric("⏱️ Elapsed", elapsed_str)
+            if avg_batch and batches_done > 0:
+                avg_min, avg_s = divmod(int(avg_batch), 60)
+                t2.metric("⚡ Avg/Batch", f"{avg_min}m {avg_s:02d}s" if avg_min > 0 else f"{int(avg_batch)}s")
+            else:
+                t2.metric("⚡ Avg/Batch", "calculating..." if phase == "signal_extraction" else "—")
+            if eta_sec is not None and eta_sec > 0:
+                eta_min, eta_s = divmod(int(eta_sec), 60)
+                t3.metric("🏁 ETA", f"~{eta_min}m {eta_s:02d}s remaining")
+            elif batches_done > 0 and batches_done >= batches_total and phase in ("cross_referencing", "writing_outputs"):
+                t3.metric("🏁 ETA", "Wrapping up...")
+            else:
+                t3.metric("🏁 ETA", "—")
+
+            # Current activity detail
             current_batch = progress.get("current_batch", "")
             if current_batch:
                 st.caption(f"Currently processing: **{current_batch}**")
