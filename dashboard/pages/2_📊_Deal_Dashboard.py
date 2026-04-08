@@ -554,34 +554,73 @@ for col, label, value, delta in [
         unsafe_allow_html=True,
     )
 
-# ── Report Download ─────────────────────────────────────────────────────────
+# ── Exports Zone ────────────────────────────────────────────────────────────
+# Consolidated export surface: DOCX report, Gate 1/2 review Excels, chase TXT
 from tools.report_export import generate_report
 
-dl_col1, dl_col2, dl_col3 = st.columns([1, 1, 4])
-with dl_col1:
-    if st.button("📥 Generate DOCX Report", use_container_width=True):
-        with st.spinner("Building report…"):
-            try:
-                buf = generate_report(selected_company)
-                if buf:
-                    st.session_state["_report_buf"] = buf
-                    st.session_state["_report_name"] = (
-                        f"{selected_company}_TDD_Report.docx"
-                    )
-                else:
-                    st.error("Report generation failed — no scan data found.")
-            except Exception as exc:
-                st.error(f"Report generation error: {exc}")
+_exp_gate1_xlsx = OUTPUTS_DIR / selected_company / "review_gate1.xlsx"
+_exp_gate2_xlsx = OUTPUTS_DIR / selected_company / "review_gate2.xlsx"
 
-if st.session_state.get("_report_buf"):
-    with dl_col2:
-        st.download_button(
-            "⬇ Download Report",
-            data=st.session_state["_report_buf"],
-            file_name=st.session_state.get("_report_name", "report.docx"),
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True,
-        )
+with st.expander("📦 **Exports** — Reports, review workbooks, chase list", expanded=False):
+    _ex1, _ex2, _ex3, _ex4 = st.columns(4)
+
+    # DOCX Report
+    with _ex1:
+        if st.session_state.get("_report_buf"):
+            st.download_button(
+                "📄 DOCX Report",
+                data=st.session_state["_report_buf"],
+                file_name=st.session_state.get("_report_name", "report.docx"),
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+            )
+        else:
+            if st.button("📄 Generate DOCX Report", use_container_width=True, key="gen_report_export"):
+                with st.spinner("Building report..."):
+                    try:
+                        buf = generate_report(selected_company)
+                        if buf:
+                            st.session_state["_report_buf"] = buf
+                            st.session_state["_report_name"] = f"{selected_company}_TDD_Report.docx"
+                            st.rerun()
+                        else:
+                            st.error("No scan data found.")
+                    except Exception as exc:
+                        st.error(f"Error: {exc}")
+
+    # Gate 1 Review Excel
+    with _ex2:
+        if _exp_gate1_xlsx.exists():
+            with open(_exp_gate1_xlsx, "rb") as _f:
+                st.download_button(
+                    "📊 Gate 1 Review",
+                    data=_f.read(),
+                    file_name=f"{selected_company}_signal_review.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                    key="export_g1",
+                )
+        else:
+            st.caption("Gate 1 Excel — run VDR scan first")
+
+    # Gate 2 Review Excel
+    with _ex3:
+        if _exp_gate2_xlsx.exists():
+            with open(_exp_gate2_xlsx, "rb") as _f:
+                st.download_button(
+                    "📊 Gate 2 Review",
+                    data=_f.read(),
+                    file_name=f"{selected_company}_finding_review.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                    key="export_g2",
+                )
+        else:
+            st.caption("Gate 2 Excel — run agents first")
+
+    # Chase List TXT (placeholder — populated after chase list is built below)
+    with _ex4:
+        st.caption("Chase list TXT available in the Chase List section below")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TWO-LAYER INTELLIGENCE: VDR Scan (Phase 0) + Agent Deep Diligence (Phase 1)
@@ -695,33 +734,63 @@ with phase_tabs[0]:
 
         st.markdown("---")
 
-        # Signal inventory table
+        # Signal inventory — grouped by pillar
         st.markdown("**Signal Inventory**")
-        for sig in sorted(all_signals, key=lambda s: {"RED": 0, "YELLOW": 1, "GREEN": 2}.get(s.get("rating", "").upper(), 3)):
-            rating = sig.get("rating", "UNKNOWN").upper()
-            pid = sig.get("pillar_id") or sig.get("lens_id") or sig.get("lens") or "Unknown"
-            plabel = PILLAR_LABELS.get(pid, pid)
-            title = sig.get("title", sig.get("signal_id", "Untitled"))
-            obs = sig.get("observation", "")
-            evidence = sig.get("evidence_quote", "")
-            source = sig.get("source_doc", "")
-            confidence = sig.get("confidence", "")
 
-            rc = {"RED": "#dc2626", "YELLOW": "#d97706", "GREEN": "#16a34a"}.get(rating, "#94a3b8")
-            with st.expander(f"{'🔴' if rating == 'RED' else '🟡' if rating == 'YELLOW' else '🟢'} **{title}** — {plabel} · {rating}"):
-                if obs:
-                    st.markdown(obs)
-                if evidence:
-                    st.markdown(f"> *\"{evidence}\"*")
-                meta_parts = []
-                if source:
-                    meta_parts.append(f"Source: **{source}**")
-                if confidence:
-                    meta_parts.append(f"Confidence: **{confidence}**")
-                if sig.get("signal_id"):
-                    meta_parts.append(f"Signal: **{sig['signal_id']}**")
-                if meta_parts:
-                    st.caption(" · ".join(meta_parts))
+        # Group signals by pillar, sort pillars by worst rating first
+        _sig_by_pillar: dict[str, list[dict]] = {}
+        for sig in all_signals:
+            _pid = sig.get("pillar_id") or sig.get("lens_id") or sig.get("lens") or "Unknown"
+            _sig_by_pillar.setdefault(_pid, []).append(sig)
+
+        # Sort pillars: those with RED signals first, then YELLOW, then GREEN-only
+        def _pillar_sort_key(pid_sigs):
+            pid, sigs = pid_sigs
+            has_red = any(s.get("rating", "").upper() == "RED" for s in sigs)
+            has_yellow = any(s.get("rating", "").upper() == "YELLOW" for s in sigs)
+            return (0 if has_red else 1 if has_yellow else 2, pid)
+
+        for _pid, _psigs in sorted(_sig_by_pillar.items(), key=_pillar_sort_key):
+            _plabel = PILLAR_LABELS.get(_pid, _pid)
+            _red_n = sum(1 for s in _psigs if s.get("rating", "").upper() == "RED")
+            _yel_n = sum(1 for s in _psigs if s.get("rating", "").upper() == "YELLOW")
+            _grn_n = sum(1 for s in _psigs if s.get("rating", "").upper() == "GREEN")
+
+            _pillar_summary = f"{_plabel} — {len(_psigs)} signals"
+            if _red_n:
+                _pillar_summary += f" · 🔴 {_red_n} RED"
+            if _yel_n:
+                _pillar_summary += f" · 🟡 {_yel_n} YELLOW"
+            if _grn_n:
+                _pillar_summary += f" · 🟢 {_grn_n} GREEN"
+
+            # Pillar group — expanded if it has RED or YELLOW signals
+            _expand_pillar = bool(_red_n or _yel_n)
+            with st.expander(_pillar_summary, expanded=_expand_pillar):
+                for sig in sorted(_psigs, key=lambda s: {"RED": 0, "YELLOW": 1, "GREEN": 2}.get(s.get("rating", "").upper(), 3)):
+                    rating = sig.get("rating", "UNKNOWN").upper()
+                    title = sig.get("title", sig.get("signal_id", "Untitled"))
+                    obs = sig.get("observation", "")
+                    evidence = sig.get("evidence_quote", "")
+                    source = sig.get("source_doc", "")
+                    confidence = sig.get("confidence", "")
+                    _r_emoji = "🔴" if rating == "RED" else "🟡" if rating == "YELLOW" else "🟢"
+
+                    st.markdown(f"{_r_emoji} **{rating}** — {title}")
+                    if obs:
+                        st.markdown(f'<div style="font-size:0.88rem;color:#334155;margin:2px 0 4px 20px">{obs}</div>', unsafe_allow_html=True)
+                    if evidence:
+                        st.markdown(f"> *\"{evidence}\"*")
+                    meta_parts = []
+                    if source:
+                        meta_parts.append(f"Source: **{source}**")
+                    if confidence:
+                        meta_parts.append(f"Confidence: **{confidence}**")
+                    if sig.get("signal_id"):
+                        meta_parts.append(f"Signal: **{sig['signal_id']}**")
+                    if meta_parts:
+                        st.caption(" · ".join(meta_parts))
+                    st.markdown("---")
 
         # CTA to launch agents
         if not has_agent_data:
@@ -786,6 +855,7 @@ with phase_tabs[1]:
                     f'<div class="name">{plabel}</div>'
                     f'<div class="stat">{len(pillar_signals)} signals · {len(findings)} findings</div>'
                     f'<div class="stat">{critical} critical · {high} high</div>'
+                    f'<div class="stat">Confidence: {domain_info.get("confidence", "—")}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
@@ -1108,41 +1178,8 @@ else:
         f"across {len(by_pillar)} domains"
     )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SCAN QUALITY — low-confidence signals and extraction issues
-# ══════════════════════════════════════════════════════════════════════════════
-
-if domain_data:
-    scan_meta = domain_data.get("_metadata", {})
-    overall_conf = domain_data.get("confidence_summary", {})
-
-    # Low-confidence docs (from extraction quality)
-    low_conf_docs = scan_meta.get("low_confidence_docs", [])
-    if low_conf_docs:
-        with st.expander(f"⚠️ {len(low_conf_docs)} documents with low extraction quality"):
-            for doc in low_conf_docs:
-                st.text(f"{doc.get('file_path', 'unknown')} — {doc.get('quality', 'unknown')}")
-
-    # Overall signal confidence summary
-    if overall_conf and overall_conf.get("low_confidence_count", 0) > 0:
-        low_n = overall_conf["low_confidence_count"]
-        low_pct = overall_conf.get("low_confidence_pct", 0)
-        with st.expander(f"⚠️ {low_n} low-confidence signals across all domains ({low_pct}%)"):
-            st.caption(
-                "These signals are based on ambiguous or incomplete evidence. "
-                "A practitioner should verify them against the source documents."
-            )
-            for sig in overall_conf.get("low_confidence_signals", []):
-                sig_id = sig.get("signal_id", "?")
-                title = sig.get("title", "")
-                note = sig.get("extraction_note", "")
-                src = sig.get("source_doc", "")
-                st.markdown(f"**{sig_id}** — {title}")
-                if note:
-                    st.caption(f"Note: {note}")
-                if src:
-                    st.caption(f"Source: {src}")
-
+# NOTE: Scan Quality / low-confidence signals section removed — consolidated
+# into the VDR tab's confidence summary panel (Fix #1, design critique).
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PRACTITIONER REVIEW — Download Excel, Upload Feedback, View Recalibration
@@ -1156,6 +1193,24 @@ st.caption(
 
 # ── Download Section ──────────────────────────────────────────────────────
 _review_col1, _review_col2, _review_col3 = st.columns([1, 1, 2])
+
+# Check feedback completion status for badges
+_g1_completed_path = OUTPUTS_DIR / selected_company / "feedback_gate1_completed.json"
+_g2_completed_path = OUTPUTS_DIR / selected_company / "feedback_gate2_completed.json"
+_g1_feedback = None
+_g2_feedback = None
+if _g1_completed_path.exists():
+    try:
+        with open(_g1_completed_path) as _f:
+            _g1_feedback = json.load(_f)
+    except Exception:
+        pass
+if _g2_completed_path.exists():
+    try:
+        with open(_g2_completed_path) as _f:
+            _g2_feedback = json.load(_f)
+    except Exception:
+        pass
 
 # Gate 1 Excel
 _gate1_xlsx = OUTPUTS_DIR / selected_company / "review_gate1.xlsx"
@@ -1183,6 +1238,26 @@ with _review_col1:
                 st.rerun()
             except Exception as _exc:
                 st.error(f"Failed to generate: {_exc}")
+
+    # Gate 1 review status badge
+    if _g1_feedback:
+        _g1_acc = _g1_feedback.get("accuracy_metrics", {})
+        _g1_who = _g1_feedback.get("practitioner_id", "")
+        _g1_pct = _g1_acc.get("accuracy_pct", "—")
+        _g1_ts = _g1_feedback.get("timestamp", "")[:10]
+        st.markdown(
+            f'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;'
+            f'padding:6px 10px;font-size:0.78rem;margin-top:4px">'
+            f'✅ Reviewed by <strong>{_g1_who}</strong> · {_g1_pct}% accuracy · {_g1_ts}</div>',
+            unsafe_allow_html=True,
+        )
+    elif _gate1_xlsx.exists():
+        st.markdown(
+            '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;'
+            'padding:6px 10px;font-size:0.78rem;margin-top:4px">'
+            '⏳ Awaiting practitioner review</div>',
+            unsafe_allow_html=True,
+        )
 
 # Gate 2 Excel
 _gate2_xlsx = OUTPUTS_DIR / selected_company / "review_gate2.xlsx"
@@ -1220,6 +1295,26 @@ with _review_col2:
                 st.rerun()
             except Exception as _exc:
                 st.error(f"Failed to generate: {_exc}")
+
+    # Gate 2 review status badge
+    if _g2_feedback:
+        _g2_acc = _g2_feedback.get("accuracy_metrics", {})
+        _g2_who = _g2_feedback.get("practitioner_id", "")
+        _g2_pct = _g2_acc.get("accuracy_pct", "—")
+        _g2_ts = _g2_feedback.get("timestamp", "")[:10]
+        st.markdown(
+            f'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;'
+            f'padding:6px 10px;font-size:0.78rem;margin-top:4px">'
+            f'✅ Reviewed by <strong>{_g2_who}</strong> · {_g2_pct}% accuracy · {_g2_ts}</div>',
+            unsafe_allow_html=True,
+        )
+    elif _gate2_xlsx.exists():
+        st.markdown(
+            '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;'
+            'padding:6px 10px;font-size:0.78rem;margin-top:4px">'
+            '⏳ Awaiting practitioner review</div>',
+            unsafe_allow_html=True,
+        )
 
 # Review manifest stats
 with _review_col3:
@@ -1271,8 +1366,31 @@ with _up_col1:
              "The system will parse verdicts, compute accuracy, and update the Signal Intelligence Layer.",
     )
 
+# Auto-detect gate from uploaded Excel sheet names
+_auto_gate = None
+_auto_gate_label = ""
+if _uploaded_file is not None:
+    try:
+        from openpyxl import load_workbook as _lwb
+        _peek_wb = _lwb(_uploaded_file, read_only=True, data_only=True)
+        _sheet_names = _peek_wb.sheetnames
+        _peek_wb.close()
+        _uploaded_file.seek(0)  # Reset for later read
+        if "Signals" in _sheet_names and "Findings" not in _sheet_names:
+            _auto_gate = 1
+            _auto_gate_label = "Auto-detected: **Gate 1** (VDR Signal Review)"
+        elif "Findings" in _sheet_names:
+            _auto_gate = 2
+            _auto_gate_label = "Auto-detected: **Gate 2** (Agent Finding Review)"
+    except Exception:
+        pass
+
 with _up_col2:
-    _gate_choice = st.radio("Gate", [1, 2], horizontal=True, key="feedback_gate")
+    if _auto_gate:
+        st.markdown(_auto_gate_label)
+        _gate_choice = _auto_gate
+    else:
+        _gate_choice = st.radio("Gate", [1, 2], horizontal=True, key="feedback_gate")
     _practitioner_name = st.text_input("Practitioner", value="", key="feedback_practitioner", placeholder="Name")
 
 if _uploaded_file is not None:
