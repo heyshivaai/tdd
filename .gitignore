@@ -22,3 +22,11 @@ desktop.ini
 .claude/
 .worktrees/
 .mcp.json
+
+VDR/
+.env.txt
+.claude-flow/
+
+VDR/
+.env.txt
+.claude-flow/
