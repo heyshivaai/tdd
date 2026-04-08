@@ -393,6 +393,17 @@ if st.session_state.scan_running and st.session_state.scan_company:
                        f"{progress.get('signals_found', 0)} signals extracted.")
             st.info("Head to **📊 Deal Dashboard** in the sidebar to view the full results.")
 
+            st.markdown("")
+            next1, next2 = st.columns(2)
+            with next1:
+                if st.button("📊 View Results on Deal Dashboard", use_container_width=True, type="primary"):
+                    st.switch_page("pages/2_📊_Deal_Dashboard.py")
+            with next2:
+                if st.button("🤖 Launch Agent Deep Diligence →", use_container_width=True):
+                    st.session_state["selected_deal_override"] = scan.get("deal_id", "")
+                    st.session_state["auto_launch_agents"] = True
+                    st.switch_page("pages/4_🤖_Agent_Pipeline.py")
+
         elif status == "failed":
             st.session_state.scan_running = False
             st.error(f"❌ Scan failed: {scan.get('error', 'Unknown error')}")

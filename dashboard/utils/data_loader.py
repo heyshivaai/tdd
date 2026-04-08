@@ -135,8 +135,10 @@ def extract_all_signals(brief: dict) -> list[dict]:
     """
     Extract all signals from a VDR intelligence brief or domain findings.
 
-    Handles both the brief format (lens_heatmap → domain_slices → signals)
-    and the domain_findings format (domains → signals via batch results).
+    Handles multiple signal storage formats:
+    - brief["signals"] — direct signal list (merged batch signals)
+    - domain_slices format (from intelligence brief)
+    - batch_results format (from intelligence brief)
 
     Args:
         brief: VDR intelligence brief or domain findings dict.
@@ -146,23 +148,31 @@ def extract_all_signals(brief: dict) -> list[dict]:
     """
     signals = []
 
-    # Try domain_slices format (from intelligence brief)
-    domain_slices = brief.get("domain_slices", {})
-    for slice_name, slice_data in domain_slices.items():
-        slice_signals = slice_data.get("signals", [])
-        # Signals may be dicts or strings
-        for sig in slice_signals:
+    # Try direct signals list first (new format where batch signals are merged)
+    direct_signals = brief.get("signals", [])
+    if direct_signals and isinstance(direct_signals, list):
+        for sig in direct_signals:
             if isinstance(sig, dict):
                 signals.append(sig)
-            elif isinstance(sig, str):
-                signals.append({
-                    "signal_id": "",
-                    "title": sig,
-                    "pillar_id": slice_name,
-                    "rating": slice_data.get("overall_rating", "UNKNOWN"),
-                })
 
-    # If no domain_slices, try batch_results format
+    # If no direct signals, try domain_slices format (from intelligence brief)
+    if not signals:
+        domain_slices = brief.get("domain_slices", {})
+        for slice_name, slice_data in domain_slices.items():
+            slice_signals = slice_data.get("signals", [])
+            # Signals may be dicts or strings
+            for sig in slice_signals:
+                if isinstance(sig, dict):
+                    signals.append(sig)
+                elif isinstance(sig, str):
+                    signals.append({
+                        "signal_id": "",
+                        "title": sig,
+                        "pillar_id": slice_name,
+                        "rating": slice_data.get("overall_rating", "UNKNOWN"),
+                    })
+
+    # If still no signals, try batch_results format
     if not signals:
         batch_results = brief.get("batch_results", [])
         if isinstance(batch_results, list):

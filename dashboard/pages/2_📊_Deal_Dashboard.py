@@ -404,280 +404,373 @@ if st.session_state.get("_report_buf"):
         )
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DOMAIN TABS — Signals + Findings per pillar
+# TWO-LAYER INTELLIGENCE: VDR Scan (Phase 0) + Agent Deep Diligence (Phase 1)
 # ══════════════════════════════════════════════════════════════════════════════
 
-st.markdown('<p class="section-hdr">Domain Deep Dives</p>', unsafe_allow_html=True)
-
-# Get all signals from brief for the signals layer
 all_signals = extract_all_signals(brief) if brief else []
+# Also try loading signals directly from brief["signals"] if extract_all_signals returns empty
+if not all_signals and brief:
+    all_signals = brief.get("signals", [])
 
-if not domain_data and not all_signals:
+has_vdr_data = bool(all_signals)
+has_agent_data = bool(domain_data and domain_data.get("domains"))
+
+if not has_vdr_data and not has_agent_data:
     st.info(
-        "No domain analysis or signal data available for this deal. "
-        "Re-run the scan with the latest code to generate deep domain findings."
+        "No scan data available for this deal yet. "
+        "Run a VDR scan from **New Scan** to generate intelligence."
     )
     st.stop()
 
-# Build pillar list from domain findings (dynamic) or fall back to signals
-if domain_data and domain_data.get("domains"):
-    domains = domain_data["domains"]
-    pillar_order = sorted(
-        domains.keys(),
-        key=lambda pid: {"RED": 0, "YELLOW": 1, "GREEN": 2, "NO_DATA": 3, "UNKNOWN": 4}.get(
-            domains[pid].get("grade", "UNKNOWN"), 5
-        ),
-    )
-else:
-    domains = {}
-    seen_pillars = {}
-    for sig in all_signals:
-        pid = sig.get("pillar_id") or sig.get("lens_id") or sig.get("lens") or "Unknown"
-        if pid not in seen_pillars:
-            seen_pillars[pid] = PILLAR_LABELS.get(pid, pid)
-    pillar_order = list(seen_pillars.keys())
+# Main tabs for the two intelligence layers
+phase_tabs = st.tabs([
+    f"🔍 VDR Scan — {len(all_signals)} signals" if has_vdr_data else "🔍 VDR Scan — pending",
+    f"🤖 Agent Deep Diligence — {len(domain_data.get('domains', {})) if has_agent_data else 0} pillars" if has_agent_data else "🤖 Agent Deep Diligence — not run yet",
+])
 
-if not pillar_order:
-    st.warning("No domain data available.")
-    st.stop()
+# ── TAB 1: VDR Scan Results ────────────────────────────────────────────────
+with phase_tabs[0]:
+    if not has_vdr_data:
+        st.info("No VDR scan data yet. Run a scan from **New Scan**.")
+    else:
+        # Pillar breakdown from signals
+        from collections import Counter
+        pillar_counts = Counter()
+        rating_counts = Counter()
+        for sig in all_signals:
+            pid = sig.get("pillar_id") or sig.get("lens_id") or sig.get("lens") or "Unknown"
+            pillar_counts[pid] += 1
+            r = sig.get("rating", "UNKNOWN").upper()
+            rating_counts[r] += 1
 
-# Domain overview grid
-st.markdown("**Domain overview** — click a tab below for deep dive")
-overview_cols = st.columns(min(len(pillar_order), 4))
-for i, pid in enumerate(pillar_order):
-    domain_info = domains.get(pid, {})
-    grade = domain_info.get("grade", "UNKNOWN")
-    plabel = domain_info.get("pillar_label", PILLAR_LABELS.get(pid, pid))
-    findings = domain_info.get("findings", [])
-    critical = sum(1 for f in findings if f.get("severity") == "CRITICAL")
-    high = sum(1 for f in findings if f.get("severity") == "HIGH")
-    pillar_signals = [s for s in all_signals if (s.get("pillar_id") or s.get("lens_id") or s.get("lens")) == pid]
+        # Rating summary
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("🔴 RED", rating_counts.get("RED", 0))
+        r2.metric("🟡 YELLOW", rating_counts.get("YELLOW", 0))
+        r3.metric("🟢 GREEN", rating_counts.get("GREEN", 0))
+        r4.metric("Total Signals", len(all_signals))
 
-    with overview_cols[i % len(overview_cols)]:
-        gc = _grade_color(grade)
-        st.markdown(
-            f'<div class="domain-tile">'
-            f'<div class="grade" style="color:{gc}">{_grade_emoji(grade)} {grade}</div>'
-            f'<div class="name">{plabel}</div>'
-            f'<div class="stat">{len(pillar_signals)} signals · {len(findings)} findings</div>'
-            f'<div class="stat">{critical} critical · {high} high</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown("---")
 
-# Tabbed deep dives
-tab_labels = [
-    f"{_grade_emoji(domains.get(pid, {}).get('grade', 'UNKNOWN'))} {PILLAR_LABELS.get(pid, pid)}"
-    for pid in pillar_order
-]
-tabs = st.tabs(tab_labels)
+        # Pillar signal heatmap
+        st.markdown("**Signal Distribution by Pillar**")
+        pillar_cols = st.columns(min(len(pillar_counts), 4)) if pillar_counts else []
+        for i, (pid, count) in enumerate(pillar_counts.most_common()):
+            plabel = PILLAR_LABELS.get(pid, pid)
+            with pillar_cols[i % len(pillar_cols)] if pillar_cols else st.container():
+                red_n = sum(1 for s in all_signals if (s.get("pillar_id") or s.get("lens_id") or s.get("lens")) == pid and s.get("rating", "").upper() == "RED")
+                st.metric(plabel, f"{count} signals", delta=f"{red_n} RED" if red_n else "0 RED", delta_color="inverse" if red_n else "off")
 
-for tab, pid in zip(tabs, pillar_order):
-    with tab:
-        domain_info = domains.get(pid, {})
-        plabel = domain_info.get("pillar_label", PILLAR_LABELS.get(pid, pid))
-        grade = domain_info.get("grade", "UNKNOWN")
-        findings = domain_info.get("findings", [])
-        pillar_signals = [
-            s for s in all_signals
-            if (s.get("pillar_id") or s.get("lens_id") or s.get("lens")) == pid
-        ]
+        st.markdown("---")
 
-        # Domain header
-        d_summary = domain_info.get("domain_summary", "")
-        docs_analyzed = domain_info.get("documents_analyzed", 0)
-        confidence = domain_info.get("confidence", 0)
+        # Signal inventory table
+        st.markdown("**Signal Inventory**")
+        for sig in sorted(all_signals, key=lambda s: {"RED": 0, "YELLOW": 1, "GREEN": 2}.get(s.get("rating", "").upper(), 3)):
+            rating = sig.get("rating", "UNKNOWN").upper()
+            pid = sig.get("pillar_id") or sig.get("lens_id") or sig.get("lens") or "Unknown"
+            plabel = PILLAR_LABELS.get(pid, pid)
+            title = sig.get("title", sig.get("signal_id", "Untitled"))
+            obs = sig.get("observation", "")
+            evidence = sig.get("evidence_quote", "")
+            source = sig.get("source_doc", "")
+            confidence = sig.get("confidence", "")
 
-        h1, h2, h3, h4 = st.columns(4)
-        h1.metric("Grade", f"{_grade_emoji(grade)} {grade}")
-        h2.metric("Confidence", f"{confidence:.0%}" if isinstance(confidence, (int, float)) else str(confidence))
-        h3.metric("Documents Analyzed", docs_analyzed)
-        h4.metric("Findings", len(findings))
+            rc = {"RED": "#dc2626", "YELLOW": "#d97706", "GREEN": "#16a34a"}.get(rating, "#94a3b8")
+            with st.expander(f"{'🔴' if rating == 'RED' else '🟡' if rating == 'YELLOW' else '🟢'} **{title}** — {plabel} · {rating}"):
+                if obs:
+                    st.markdown(obs)
+                if evidence:
+                    st.markdown(f"> *\"{evidence}\"*")
+                meta_parts = []
+                if source:
+                    meta_parts.append(f"Source: **{source}**")
+                if confidence:
+                    meta_parts.append(f"Confidence: **{confidence}**")
+                if sig.get("signal_id"):
+                    meta_parts.append(f"Signal: **{sig['signal_id']}**")
+                if meta_parts:
+                    st.caption(" · ".join(meta_parts))
 
-        if d_summary:
-            st.markdown(
-                f'<div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:10px;'
-                f'padding:16px 20px;margin:10px 0;font-size:0.88rem;color:#1e293b;line-height:1.6">'
-                f'{d_summary}</div>',
-                unsafe_allow_html=True,
+        # CTA to launch agents
+        if not has_agent_data:
+            st.markdown("---")
+            st.markdown("### Ready for Deep Diligence?")
+            st.markdown("The VDR scan extracts signals from documents. The **8-Agent Pipeline** goes deeper — each specialist agent analyzes a different domain and produces structured findings with evidence chains.")
+            if st.button("🤖 Launch Agent Deep Diligence →", key="launch_agents_from_dashboard", use_container_width=True, type="primary"):
+                st.session_state["auto_launch_agents"] = True
+                st.switch_page("pages/4_🤖_Agent_Pipeline.py")
+
+# ── TAB 2: Agent Deep Diligence Results ────────────────────────────────────
+with phase_tabs[1]:
+    if not has_agent_data:
+        st.info("Agent deep diligence has not been run yet for this deal.")
+        st.markdown("The 8-agent pipeline (Alex → Sam) performs domain-specific analysis across all 7 pillars, producing structured findings, evidence chains, and a prioritized chase list.")
+        if st.button("🤖 Launch Agent Pipeline", key="launch_agents_tab2", use_container_width=True, type="primary"):
+            st.session_state["auto_launch_agents"] = True
+            st.switch_page("pages/4_🤖_Agent_Pipeline.py")
+    else:
+        # Domain deep dive code — moved inside this else block
+        _agent_data_present = True  # noqa: F841 — ensures valid indented block
+
+        # Build pillar list from domain findings (dynamic) or fall back to signals
+        if domain_data and domain_data.get("domains"):
+            domains = domain_data["domains"]
+            pillar_order = sorted(
+                domains.keys(),
+                key=lambda pid: {"RED": 0, "YELLOW": 1, "GREEN": 2, "NO_DATA": 3, "UNKNOWN": 4}.get(
+                    domains[pid].get("grade", "UNKNOWN"), 5
+                ),
             )
-
-        # ── SIGNALS (Layer 1) ────────────────────────────────────────────
-        st.markdown(f"### 📡 Signals ({len(pillar_signals)})")
-        st.caption("Raw extractions from VDR documents — what the scan found")
-
-        if not pillar_signals:
-            st.info(f"No signals extracted for {plabel}. The VDR may lack coverage for this domain.")
         else:
-            rating_order = {"RED": 0, "YELLOW": 1, "GREEN": 2}
-            sorted_signals = sorted(pillar_signals, key=lambda s: rating_order.get(s.get("rating", ""), 99))
+            domains = {}
+            seen_pillars = {}
+            for sig in all_signals:
+                pid = sig.get("pillar_id") or sig.get("lens_id") or sig.get("lens") or "Unknown"
+                if pid not in seen_pillars:
+                    seen_pillars[pid] = PILLAR_LABELS.get(pid, pid)
+            pillar_order = list(seen_pillars.keys())
 
-            for sig in sorted_signals:
-                sig_rating = sig.get("rating", "UNKNOWN")
-                sig_emoji = {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(sig_rating, "⚪")
-                sig_id = sig.get("signal_id", "")
-                title = sig.get("title", "Untitled signal")
-                observation = sig.get("observation", "")
-                source_doc = sig.get("source_doc", "")
-                evidence_quote = sig.get("evidence_quote", "")
-                deal_imp = sig.get("deal_implication", "")
-                confidence = sig.get("confidence", "")
-                catalog_id = sig.get("catalog_signal_id", "")
+        if not pillar_order:
+            st.warning("No domain data available.")
+            st.stop()
 
-                with st.expander(f"{sig_emoji} {sig_rating} — {title}  `{sig_id}`", expanded=False):
-                    if observation:
-                        st.markdown(observation)
+        # Domain overview grid
+        st.markdown("**Domain overview** — click a tab below for deep dive")
+        overview_cols = st.columns(min(len(pillar_order), 4))
+        for i, pid in enumerate(pillar_order):
+            domain_info = domains.get(pid, {})
+            grade = domain_info.get("grade", "UNKNOWN")
+            plabel = domain_info.get("pillar_label", PILLAR_LABELS.get(pid, pid))
+            findings = domain_info.get("findings", [])
+            critical = sum(1 for f in findings if f.get("severity") == "CRITICAL")
+            high = sum(1 for f in findings if f.get("severity") == "HIGH")
+            pillar_signals = [s for s in all_signals if (s.get("pillar_id") or s.get("lens_id") or s.get("lens")) == pid]
 
-                    if deal_imp:
-                        st.markdown(f"**Deal implication:** {deal_imp}")
+            with overview_cols[i % len(overview_cols)]:
+                gc = _grade_color(grade)
+                st.markdown(
+                    f'<div class="domain-tile">'
+                    f'<div class="grade" style="color:{gc}">{_grade_emoji(grade)} {grade}</div>'
+                    f'<div class="name">{plabel}</div>'
+                    f'<div class="stat">{len(pillar_signals)} signals · {len(findings)} findings</div>'
+                    f'<div class="stat">{critical} critical · {high} high</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
 
-                    if confidence:
-                        st.markdown(f"**Confidence:** {confidence}")
+        # Tabbed deep dives
+        tab_labels = [
+            f"{_grade_emoji(domains.get(pid, {}).get('grade', 'UNKNOWN'))} {PILLAR_LABELS.get(pid, pid)}"
+            for pid in pillar_order
+        ]
+        tabs = st.tabs(tab_labels)
 
-                    if catalog_id:
-                        st.caption(f"Catalog match: {catalog_id}")
+        for tab, pid in zip(tabs, pillar_order):
+            with tab:
+                domain_info = domains.get(pid, {})
+                plabel = domain_info.get("pillar_label", PILLAR_LABELS.get(pid, pid))
+                grade = domain_info.get("grade", "UNKNOWN")
+                findings = domain_info.get("findings", [])
+                pillar_signals = [
+                    s for s in all_signals
+                    if (s.get("pillar_id") or s.get("lens_id") or s.get("lens")) == pid
+                ]
 
-                    if source_doc or evidence_quote:
-                        st.markdown("**Evidence:**")
-                        doc_label = source_doc if source_doc else "Unknown document"
-                        quote_html = ""
-                        if evidence_quote:
-                            quote_html = f"<blockquote>{evidence_quote}</blockquote>"
-                        st.markdown(
-                            f'<div class="evidence-box">'
-                            f'<span class="doc-name">📄 {doc_label}</span>'
-                            f'{quote_html}'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
+                # Domain header
+                d_summary = domain_info.get("domain_summary", "")
+                docs_analyzed = domain_info.get("documents_analyzed", 0)
+                confidence = domain_info.get("confidence", 0)
 
-        st.divider()
+                h1, h2, h3, h4 = st.columns(4)
+                h1.metric("Grade", f"{_grade_emoji(grade)} {grade}")
+                h2.metric("Confidence", f"{confidence:.0%}" if isinstance(confidence, (int, float)) else str(confidence))
+                h3.metric("Documents Analyzed", docs_analyzed)
+                h4.metric("Findings", len(findings))
 
-        # ── FINDINGS (Layer 2) ───────────────────────────────────────────
-        st.markdown(f"### 🔎 Findings ({len(findings)})")
-        st.caption("Domain agent analysis — interpreted conclusions with evidence chains")
+                if d_summary:
+                    st.markdown(
+                        f'<div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:10px;'
+                        f'padding:16px 20px;margin:10px 0;font-size:0.88rem;color:#1e293b;line-height:1.6">'
+                        f'{d_summary}</div>',
+                        unsafe_allow_html=True,
+                    )
 
-        if not findings:
-            if domain_info.get("_error"):
-                st.error(f"Domain analysis failed for {plabel}. Re-run the scan to retry.")
-            elif grade == "NO_DATA":
-                st.info(f"No signals to analyze for {plabel}.")
-            else:
-                st.info("No findings generated. The scan may need to be re-run with the latest code.")
-        else:
-            sorted_findings = sorted(findings, key=lambda f: _sev_order(f.get("severity", "LOW")))
+                # ── SIGNALS (Layer 1) ────────────────────────────────────────────
+                st.markdown(f"### 📡 Signals ({len(pillar_signals)})")
+                st.caption("Raw extractions from VDR documents — what the scan found")
 
-            for finding in sorted_findings:
-                f_id = finding.get("finding_id", "")
-                f_title = finding.get("title", "Untitled")
-                f_sev = finding.get("severity", "MEDIUM")
-                f_cat = finding.get("category", "")
-                f_desc = finding.get("description", "")
-                f_impact = finding.get("business_impact", "")
-                f_question = finding.get("question_for_target", "")
-                f_remediation = finding.get("remediation", {})
-                f_evidence = finding.get("evidence", [])
-                f_contradictions = finding.get("contradictions", [])
+                if not pillar_signals:
+                    st.info(f"No signals extracted for {plabel}. The VDR may lack coverage for this domain.")
+                else:
+                    rating_order = {"RED": 0, "YELLOW": 1, "GREEN": 2}
+                    sorted_signals = sorted(pillar_signals, key=lambda s: rating_order.get(s.get("rating", ""), 99))
 
-                sev_emoji = _sev_emoji(f_sev)
+                    for sig in sorted_signals:
+                        sig_rating = sig.get("rating", "UNKNOWN")
+                        sig_emoji = {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(sig_rating, "⚪")
+                        sig_id = sig.get("signal_id", "")
+                        title = sig.get("title", "Untitled signal")
+                        observation = sig.get("observation", "")
+                        source_doc = sig.get("source_doc", "")
+                        evidence_quote = sig.get("evidence_quote", "")
+                        deal_imp = sig.get("deal_implication", "")
+                        confidence = sig.get("confidence", "")
+                        catalog_id = sig.get("catalog_signal_id", "")
 
-                with st.expander(
-                    f"{sev_emoji} {f_sev} — {f_title}  `{f_id}`",
-                    expanded=(f_sev in ("CRITICAL", "HIGH")),
-                ):
-                    if f_cat:
-                        st.caption(f"Category: {f_cat.replace('_', ' ').title()}")
+                        with st.expander(f"{sig_emoji} {sig_rating} — {title}  `{sig_id}`", expanded=False):
+                            if observation:
+                                st.markdown(observation)
 
-                    if f_desc:
-                        st.markdown(f_desc)
+                            if deal_imp:
+                                st.markdown(f"**Deal implication:** {deal_imp}")
 
-                    # Evidence chain
-                    if f_evidence:
-                        st.markdown("**Evidence chain:**")
-                        for ev in f_evidence:
-                            ev_type = ev.get("type", "")
-                            if ev_type == "signal":
+                            if confidence:
+                                st.markdown(f"**Confidence:** {confidence}")
+
+                            if catalog_id:
+                                st.caption(f"Catalog match: {catalog_id}")
+
+                            if source_doc or evidence_quote:
+                                st.markdown("**Evidence:**")
+                                doc_label = source_doc if source_doc else "Unknown document"
+                                quote_html = ""
+                                if evidence_quote:
+                                    quote_html = f"<blockquote>{evidence_quote}</blockquote>"
                                 st.markdown(
                                     f'<div class="evidence-box">'
-                                    f'<span class="doc-name">📡 Signal: {ev.get("signal_id", "")}</span>'
-                                    f'<br><span style="font-size:0.85rem">{ev.get("detail", "")}</span>'
-                                    f'</div>',
-                                    unsafe_allow_html=True,
-                                )
-                            elif ev_type == "document":
-                                doc_name = ev.get("source_doc", "Unknown")
-                                excerpt = ev.get("excerpt", "")
-                                detail = ev.get("detail", "")
-                                quote_html = f"<blockquote>{excerpt}</blockquote>" if excerpt else ""
-                                st.markdown(
-                                    f'<div class="evidence-box">'
-                                    f'<span class="doc-name">📄 {doc_name}</span>'
+                                    f'<span class="doc-name">📄 {doc_label}</span>'
                                     f'{quote_html}'
-                                    f'<span style="font-size:0.82rem;color:#475569">{detail}</span>'
                                     f'</div>',
                                     unsafe_allow_html=True,
                                 )
-                            elif ev_type == "missing":
+
+                st.divider()
+
+                # ── FINDINGS (Layer 2) ───────────────────────────────────────────
+                st.markdown(f"### 🔎 Findings ({len(findings)})")
+                st.caption("Domain agent analysis — interpreted conclusions with evidence chains")
+
+                if not findings:
+                    if domain_info.get("_error"):
+                        st.error(f"Domain analysis failed for {plabel}. Re-run the scan to retry.")
+                    elif grade == "NO_DATA":
+                        st.info(f"No signals to analyze for {plabel}.")
+                    else:
+                        st.info("No findings generated. The scan may need to be re-run with the latest code.")
+                else:
+                    sorted_findings = sorted(findings, key=lambda f: _sev_order(f.get("severity", "LOW")))
+
+                    for finding in sorted_findings:
+                        f_id = finding.get("finding_id", "")
+                        f_title = finding.get("title", "Untitled")
+                        f_sev = finding.get("severity", "MEDIUM")
+                        f_cat = finding.get("category", "")
+                        f_desc = finding.get("description", "")
+                        f_impact = finding.get("business_impact", "")
+                        f_question = finding.get("question_for_target", "")
+                        f_remediation = finding.get("remediation", {})
+                        f_evidence = finding.get("evidence", [])
+                        f_contradictions = finding.get("contradictions", [])
+
+                        sev_emoji = _sev_emoji(f_sev)
+
+                        with st.expander(
+                            f"{sev_emoji} {f_sev} — {f_title}  `{f_id}`",
+                            expanded=(f_sev in ("CRITICAL", "HIGH")),
+                        ):
+                            if f_cat:
+                                st.caption(f"Category: {f_cat.replace('_', ' ').title()}")
+
+                            if f_desc:
+                                st.markdown(f_desc)
+
+                            # Evidence chain
+                            if f_evidence:
+                                st.markdown("**Evidence chain:**")
+                                for ev in f_evidence:
+                                    ev_type = ev.get("type", "")
+                                    if ev_type == "signal":
+                                        st.markdown(
+                                            f'<div class="evidence-box">'
+                                            f'<span class="doc-name">📡 Signal: {ev.get("signal_id", "")}</span>'
+                                            f'<br><span style="font-size:0.85rem">{ev.get("detail", "")}</span>'
+                                            f'</div>',
+                                            unsafe_allow_html=True,
+                                        )
+                                    elif ev_type == "document":
+                                        doc_name = ev.get("source_doc", "Unknown")
+                                        excerpt = ev.get("excerpt", "")
+                                        detail = ev.get("detail", "")
+                                        quote_html = f"<blockquote>{excerpt}</blockquote>" if excerpt else ""
+                                        st.markdown(
+                                            f'<div class="evidence-box">'
+                                            f'<span class="doc-name">📄 {doc_name}</span>'
+                                            f'{quote_html}'
+                                            f'<span style="font-size:0.82rem;color:#475569">{detail}</span>'
+                                            f'</div>',
+                                            unsafe_allow_html=True,
+                                        )
+                                    elif ev_type == "missing":
+                                        st.markdown(
+                                            f'<div class="evidence-box" style="border-left-color:#dc2626;background:#fef2f2">'
+                                            f'<span class="doc-name" style="color:#dc2626">❌ Missing: {ev.get("expected", "")}</span>'
+                                            f'<br><span style="font-size:0.82rem;color:#991b1b">{ev.get("detail", "")}</span>'
+                                            f'</div>',
+                                            unsafe_allow_html=True,
+                                        )
+
+                            # Contradictions
+                            if f_contradictions and any(f_contradictions):
+                                st.markdown("**Contradictions:**")
+                                for c in f_contradictions:
+                                    if c:
+                                        st.warning(f"⚠️ {c}")
+
+                            # Business impact
+                            if f_impact:
+                                st.markdown(f"**Business impact:** {f_impact}")
+
+                            # Remediation
+                            if f_remediation and isinstance(f_remediation, dict):
+                                effort = f_remediation.get("effort", "")
+                                cost = f_remediation.get("cost_estimate", "")
+                                rem_desc = f_remediation.get("description", "")
+                                if effort or cost:
+                                    rem_parts = []
+                                    if effort:
+                                        rem_parts.append(f"**Effort:** {effort}")
+                                    if cost:
+                                        rem_parts.append(f"**Cost:** {cost}")
+                                    st.markdown(" · ".join(rem_parts))
+                                if rem_desc:
+                                    st.caption(rem_desc)
+
+                            # Question for target
+                            if f_question:
                                 st.markdown(
-                                    f'<div class="evidence-box" style="border-left-color:#dc2626;background:#fef2f2">'
-                                    f'<span class="doc-name" style="color:#dc2626">❌ Missing: {ev.get("expected", "")}</span>'
-                                    f'<br><span style="font-size:0.82rem;color:#991b1b">{ev.get("detail", "")}</span>'
-                                    f'</div>',
+                                    f'<div style="background:#eff6ff;border:1px solid #bfdbfe;'
+                                    f'border-radius:8px;padding:10px 14px;margin-top:8px;font-size:0.85rem">'
+                                    f'💬 <strong>Ask the target:</strong> {f_question}</div>',
                                     unsafe_allow_html=True,
                                 )
 
-                    # Contradictions
-                    if f_contradictions and any(f_contradictions):
-                        st.markdown("**Contradictions:**")
-                        for c in f_contradictions:
-                            if c:
-                                st.warning(f"⚠️ {c}")
+                # Blind spots
+                blind_spots = domain_info.get("blind_spots", [])
+                if blind_spots:
+                    st.markdown("**Blind spots** — areas with no VDR coverage:")
+                    for bs in blind_spots:
+                        st.markdown(f"- ⚠️ {bs}")
 
-                    # Business impact
-                    if f_impact:
-                        st.markdown(f"**Business impact:** {f_impact}")
-
-                    # Remediation
-                    if f_remediation and isinstance(f_remediation, dict):
-                        effort = f_remediation.get("effort", "")
-                        cost = f_remediation.get("cost_estimate", "")
-                        rem_desc = f_remediation.get("description", "")
-                        if effort or cost:
-                            rem_parts = []
-                            if effort:
-                                rem_parts.append(f"**Effort:** {effort}")
-                            if cost:
-                                rem_parts.append(f"**Cost:** {cost}")
-                            st.markdown(" · ".join(rem_parts))
-                        if rem_desc:
-                            st.caption(rem_desc)
-
-                    # Question for target
-                    if f_question:
-                        st.markdown(
-                            f'<div style="background:#eff6ff;border:1px solid #bfdbfe;'
-                            f'border-radius:8px;padding:10px 14px;margin-top:8px;font-size:0.85rem">'
-                            f'💬 <strong>Ask the target:</strong> {f_question}</div>',
-                            unsafe_allow_html=True,
-                        )
-
-        # Blind spots
-        blind_spots = domain_info.get("blind_spots", [])
-        if blind_spots:
-            st.markdown("**Blind spots** — areas with no VDR coverage:")
-            for bs in blind_spots:
-                st.markdown(f"- ⚠️ {bs}")
-
-        # Low-confidence signals — verify manually
-        conf_summary = domain_info.get("confidence_summary", {})
-        low_conf = conf_summary.get("low_confidence_count", 0)
-        if low_conf > 0:
-            with st.expander(f"⚠️ {low_conf} low-confidence signals — verify manually"):
-                low_sigs = conf_summary.get("low_confidence_signals", [])
-                for sig in low_sigs:
-                    st.markdown(f"**{sig.get('signal_id', 'Unknown')}** — {sig.get('observation', '')}")
-                    if sig.get("extraction_note"):
-                        st.caption(f"Note: {sig['extraction_note']}")
+                # Low-confidence signals — verify manually
+                conf_summary = domain_info.get("confidence_summary", {})
+                low_conf = conf_summary.get("low_confidence_count", 0)
+                if low_conf > 0:
+                    with st.expander(f"⚠️ {low_conf} low-confidence signals — verify manually"):
+                        low_sigs = conf_summary.get("low_confidence_signals", [])
+                        for sig in low_sigs:
+                            st.markdown(f"**{sig.get('signal_id', 'Unknown')}** — {sig.get('observation', '')}")
+                            if sig.get("extraction_note"):
+                                st.caption(f"Note: {sig['extraction_note']}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
