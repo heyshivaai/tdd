@@ -98,6 +98,7 @@ _PREFIX_TO_PILLAR: dict[str, str] = {
     "DA": "DataAIReadiness",
     "SP": "SDLCProductManagement",
     "RD": "RDSpendAssessment",
+    "RS": "RDSpendAssessment",
     "OT": "OrganizationTalent",
 }
 
@@ -147,6 +148,10 @@ _PILLAR_NORMALIZE: dict[str, str] = {
     "SDLCPRODMGMT": "SDLCProductManagement",
     # RDSpendAssessment
     "RD": "RDSpendAssessment",
+    "RS": "RDSpendAssessment",
+    "RDS": "RDSpendAssessment",
+    "R&DSpend": "RDSpendAssessment",
+    "SpendAssessment": "RDSpendAssessment",
     # OrganizationTalent
     "OT": "OrganizationTalent",
     "TO": "OrganizationTalent",
@@ -155,10 +160,12 @@ _PILLAR_NORMALIZE: dict[str, str] = {
 # Keyword → pillar for last-resort fuzzy matching
 _KEYWORD_PILLAR: list[tuple[list[str], str]] = [
     (["security", "compliance", "soc2", "hipaa", "hitrust", "penetration",
-      "vulnerability", "breach", "gdpr", "iso27001", "audit", "cyber"],
+      "vulnerability", "breach", "gdpr", "iso27001", "audit", "cyber",
+      "phi", "pii", "incident", "mttd", "detection delay", "data breach"],
      "SecurityCompliance"),
     (["architecture", "scalability", "cloud", "aws", "azure", "microservice",
-      "monolith", "api", "platform", "stack", "framework"],
+      "monolith", "api", "platform", "stack", "framework", "migration",
+      "multi-cloud", "gcp", "tech debt", "tooling", "winforms", "legacy"],
      "TechnologyArchitecture"),
     (["infrastructure", "deploy", "ci/cd", "devops", "observability", "sla",
       "disaster", "recovery", "uptime", "incident", "monitoring"],
@@ -170,10 +177,12 @@ _KEYWORD_PILLAR: list[tuple[list[str], str]] = [
       "backlog", "qa", "testing", "release"],
      "SDLCProductManagement"),
     (["r&d", "spend", "capex", "opex", "license", "vendor", "cost",
-      "budget", "investment", "ip", "patent"],
+      "budget", "investment", "ip", "patent", "revenue", "carr", "arr",
+      "customer concentration", "hosting cost"],
      "RDSpendAssessment"),
     (["team", "hiring", "retention", "org", "talent", "key-person",
-      "leadership", "headcount", "culture", "succession"],
+      "leadership", "headcount", "culture", "succession", "restructure",
+      "consolidate", "cto", "direct report", "span of control", "offshore"],
      "OrganizationTalent"),
 ]
 
@@ -239,30 +248,25 @@ def _load_v13_data() -> None:
     if _PILLARS_V13:
         return  # Already loaded
 
-    # Prefer v1.4 (calibration-enhanced), fall back to v1.3
-    pillars_path = DATA_DIR / "signal_pillars_v1.4.json"
-    if not pillars_path.exists():
-        pillars_path = DATA_DIR / "signal_pillars_v1.3.json"
-
-    catalog_path = DATA_DIR / "signal_catalog_v1.4.json"
-    if not catalog_path.exists():
-        catalog_path = DATA_DIR / "signal_catalog_v1.3.json"
+    # Single source of truth — no version suffix, tracked by git
+    pillars_path = DATA_DIR / "signal_pillars.json"
+    catalog_path = DATA_DIR / "signal_catalog.json"
 
     if pillars_path.exists():
         data = json.loads(pillars_path.read_text(encoding="utf-8"))
         _PILLARS_V13 = data.get("pillars", [])
         ver = data.get("version", "?")
-        logger.info("Loaded v%s pillar definitions: %d pillars", ver, len(_PILLARS_V13))
+        logger.info("Loaded signal pillars v%s: %d pillars", ver, len(_PILLARS_V13))
     else:
-        logger.warning("No pillar file found — using empty pillar list")
+        logger.warning("signal_pillars.json not found at %s", pillars_path)
 
     if catalog_path.exists():
         data = json.loads(catalog_path.read_text(encoding="utf-8"))
         _CATALOG_V13 = data.get("signals", [])
         ver = data.get("version", "?")
-        logger.info("Loaded v%s signal catalog: %d signals", ver, len(_CATALOG_V13))
+        logger.info("Loaded signal catalog v%s: %d signals", ver, len(_CATALOG_V13))
     else:
-        logger.warning("No catalog file found — using empty catalog")
+        logger.warning("signal_catalog.json not found at %s", catalog_path)
 
 
 def _format_pillar_definitions() -> str:

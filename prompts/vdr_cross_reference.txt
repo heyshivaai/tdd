@@ -80,3 +80,18 @@ RULES:
 - Reading list must contain at least 5 documents; aim for 10
 - Every compound risk must reference at least 2 contributing signal IDs from different batch groups
 - Domain slices must be independently readable — include enough context so a reader of only the slice understands the picture
+
+COMPOUND RISK PATTERNS TO LOOK FOR (v1.4 calibration-enhanced):
+When synthesizing signals into compound risks, actively look for these cross-pillar patterns that practitioners commonly identify:
+
+1. CUSTOMER CONCENTRATION + LEGACY PLATFORM: A top customer (>10% CARR) on a legacy/deprecated platform creates compound risk — losing the customer during migration is a revenue event.
+2. DATA INCIDENTS + COMPLIANCE CERTIFICATION: Active PHI/PII breaches alongside current compliance certifications (SOC2, HITRUST) = governance gap. The certification doesn't protect against active incidents.
+3. MULTI-CLOUD + COST GROWTH: Running 3+ environments (AWS + GCP + on-prem) with linear cost scaling = compounding infra spend that won't self-correct without consolidation investment.
+4. ORG FRAGMENTATION + TECH DEBT: Fragmented tech leadership (no single CTO) + high tech debt = nobody owns the remediation. Debt grows because no one has authority to prioritize it.
+5. SECURITY TOOL GAPS + INCIDENT DETECTION DELAYS: Missing SIEM/SOC + slow MTTD = compound security exposure. Each gap amplifies the other.
+6. QA BOTTLENECK + DEPLOYMENT VELOCITY: Small/manual QA team + high deployment frequency = release quality risk. Look for test automation gaps alongside rapid release cycles.
+
+SEVERITY CALIBRATION FOR COMPOUND RISKS:
+- CRITICAL: Reserve for compound risks where the combination creates deal-value impact (>$1M remediation or >12 months to resolve) — NOT just because individual signals are RED
+- HIGH: Compound risk that requires attention in first 100 days post-acquisition
+- MEDIUM: Compound risk that should be on the value creation roadmap but isn't urgent

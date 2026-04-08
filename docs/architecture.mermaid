@@ -1,0 +1,149 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#0f172a', 'primaryTextColor': '#fff', 'primaryBorderColor': '#334155', 'lineColor': '#64748b', 'secondaryColor': '#1e3a5f', 'tertiaryColor': '#f8fafc', 'fontSize': '14px'}}}%%
+
+graph TB
+    subgraph UI["STREAMLIT DASHBOARD"]
+        direction LR
+        NS["🔍 New Scan<br/>+ Preview"]
+        DD["📊 Deal<br/>Dashboard"]
+        DI["📥 Document<br/>Intake"]
+        MI["🧠 Market<br/>Intel"]
+        QT["📋 Questionnaire<br/>Tracker"]
+    end
+
+    subgraph DL["DATA LOADER"]
+        dl["data_loader.py<br/>Reads outputs/"]
+    end
+
+    subgraph AGENTS["ORCHESTRATION LAYER"]
+        direction TB
+        subgraph P0["Phase 0 — VDR Triage Agent"]
+            direction LR
+            S1["1. Structure<br/>Mapper"]
+            S2["2. Completeness<br/>Checker"]
+            S3["3. Signal<br/>Extraction<br/>(per batch)"]
+            S4["4. Cross-<br/>Reference"]
+            S5["5. Grade +<br/>Recommend"]
+            S6["6. Report<br/>Writer"]
+            S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        end
+        subgraph P4["Phase 4 — Quinn Agent"]
+            direction LR
+            TW["Template<br/>Watch"]
+            CW["Catalog<br/>Watch"]
+            IA["Impact<br/>Analysis"]
+            VR["Version<br/>Registry"]
+            TW --> CW --> IA --> VR
+        end
+    end
+
+    subgraph TOOLS["TOOLS LAYER"]
+        direction TB
+        subgraph classify["Classification"]
+            sm["structure_mapper.py<br/>Batch assignment<br/>ZIP extraction"]
+            cc["completeness_checker.py<br/>Gap detection<br/>Chase list"]
+        end
+        subgraph extract["Extraction"]
+            dr["document_reader.py<br/>PDF · DOCX · XLSX<br/>TXT · CSV"]
+            se["signal_extractor.py<br/>Claude per-batch<br/>Pillar-scoped prompts"]
+        end
+        subgraph synthesize["Synthesis"]
+            cr["cross_referencer.py<br/>Claude synthesis<br/>Compound risks"]
+            vg["vdr_grader.py<br/>4-dimension A-F<br/>Deterministic"]
+            pr["practitioner_recommender.py<br/>Specialist scoring<br/>Effort estimates"]
+        end
+        subgraph drl["DRL Pipeline"]
+            dp["drl_parser.py<br/>Questionnaire extraction"]
+            dg["drl_grader.py<br/>Completeness + Depth"]
+            dvs["drl_version_store.py<br/>Response versioning"]
+        end
+        subgraph quinn_tools["Quinn Tools"]
+            qse["quinn_schema_engine.py<br/>Fingerprinting + Diff"]
+            qvr["quinn_version_registry.py<br/>Compatibility matrix"]
+        end
+        subgraph support["Support"]
+            rl["rate_limiter.py<br/>TPM budget pacing"]
+            ss["signal_store.py<br/>Cross-deal patterns"]
+            rw["report_writer.py<br/>JSON + Markdown"]
+        end
+    end
+
+    subgraph CLAUDE["CLAUDE API"]
+        direction LR
+        sonnet["claude-sonnet-4-20250514"]
+    end
+
+    subgraph DATA["DATA / CONFIG"]
+        direction LR
+        subgraph config["Configuration"]
+            br["batch_rules.json<br/>~65 rules"]
+            ed["expected_docs.json<br/>Sector-specific"]
+            sc13["signal_catalog_v1.3.json<br/>29 signals"]
+            sp13["signal_pillars_v1.3.json<br/>7 pillars"]
+            scfg["scoring_config.py<br/>Grade thresholds"]
+        end
+        subgraph outputs["Outputs (per company)"]
+            brief["vdr_intelligence_brief.json"]
+            report["vdr_triage_report.md"]
+            comp["vdr_completeness_report.md"]
+            manifest["_manifest.json"]
+            changelog["_changelog.md"]
+            history["scan_history.json"]
+        end
+        subgraph prompts["Prompt Templates"]
+            pse["vdr_signal_extraction.txt"]
+            pcr["vdr_cross_reference.txt"]
+            pcc["vdr_completeness.txt"]
+        end
+    end
+
+    subgraph VDR["VDR INPUT"]
+        folder["📁 VDR Folder<br/>PDFs · DOCX · XLSX<br/>ZIPs · TXT"]
+    end
+
+    %% Connections
+    UI --> DL
+    DL --> outputs
+    NS --> P0
+    QT --> drl
+
+    folder --> sm
+    sm --> cc
+    cc --> dr
+    dr --> se
+    se -->|"per batch"| sonnet
+    se --> cr
+    cr -->|"1 synthesis call"| sonnet
+    cr --> vg
+    cr --> pr
+    vg --> rw
+    pr --> rw
+    rw --> outputs
+
+    sm --> br
+    cc --> ed
+    se --> sc13
+    se --> sp13
+    se --> pse
+    cr --> pcr
+    vg --> scfg
+
+    P4 --> quinn_tools
+    quinn_tools --> config
+
+    rl -.->|"paces"| se
+    rl -.->|"paces"| cr
+    ss -.->|"prior patterns"| se
+
+    classDef agent fill:#0f172a,stroke:#334155,color:#fff
+    classDef tool fill:#1e3a5f,stroke:#334155,color:#e2e8f0
+    classDef data fill:#f1f5f9,stroke:#94a3b8,color:#0f172a
+    classDef api fill:#7c3aed,stroke:#5b21b6,color:#fff
+    classDef input fill:#15803d,stroke:#166534,color:#fff
+    classDef ui fill:#0369a1,stroke:#075985,color:#fff
+
+    class S1,S2,S3,S4,S5,S6,TW,CW,IA,VR agent
+    class sm,cc,dr,se,cr,vg,pr,dp,dg,dvs,qse,qvr,rl,ss,rw tool
+    class br,ed,sc13,sp13,scfg,brief,report,comp,manifest,changelog,history,pse,pcr,pcc data
+    class sonnet api
+    class folder input
+    class NS,DD,DI,MI,QT ui

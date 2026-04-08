@@ -75,6 +75,11 @@ st.markdown(
     """
     <div class="card-grid">
         <div class="card">
+            <h3>🚀 New Scan</h3>
+            <p>Launch a VDR triage scan — point to a data room folder,
+            configure deal metadata, and kick off the analysis.</p>
+        </div>
+        <div class="card">
             <h3>📊 Deal Dashboard</h3>
             <p>View domain findings, signal heatmaps, and chase lists for completed scans.
             Deep dive into each pillar with evidence chains.</p>

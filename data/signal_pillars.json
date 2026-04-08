@@ -1,0 +1,102 @@
+{
+  "version": "1.4",
+  "taxonomy_label": "pillars",
+  "total_pillars": 7,
+  "total_signals": 38,
+  "pillars": [
+    {
+      "id": "TechnologyArchitecture",
+      "label": "Technology & Architecture",
+      "pillar_number": 1,
+      "signal_ids": [
+        "TA-01",
+        "TA-02",
+        "TA-03",
+        "TA-04",
+        "TA-05",
+        "TA-06",
+        "TA-07",
+        "TA-08"
+      ],
+      "signal_count": 8
+    },
+    {
+      "id": "SecurityCompliance",
+      "label": "Security and Compliance",
+      "pillar_number": 2,
+      "signal_ids": [
+        "SC-01",
+        "SC-02",
+        "SC-03",
+        "SC-04",
+        "SC-05",
+        "SC-06"
+      ],
+      "signal_count": 6
+    },
+    {
+      "id": "OrganizationTalent",
+      "label": "Organization & Talent",
+      "pillar_number": 3,
+      "signal_ids": [
+        "OT-01",
+        "OT-02",
+        "OT-03",
+        "OT-04",
+        "OT-05"
+      ],
+      "signal_count": 5
+    },
+    {
+      "id": "DataAIReadiness",
+      "label": "Data & AI Readiness",
+      "pillar_number": 4,
+      "signal_ids": [
+        "DA-01",
+        "DA-02",
+        "DA-03"
+      ],
+      "signal_count": 3
+    },
+    {
+      "id": "RDSpendAssessment",
+      "label": "R&D Spend Assessment",
+      "pillar_number": 5,
+      "signal_ids": [
+        "RS-01",
+        "RS-02",
+        "RS-03",
+        "RS-04",
+        "RS-05",
+        "RS-06",
+        "RS-07"
+      ],
+      "signal_count": 7
+    },
+    {
+      "id": "InfrastructureDeployment",
+      "label": "Infrastructure and Deployment",
+      "pillar_number": 6,
+      "signal_ids": [
+        "ID-01",
+        "ID-02",
+        "ID-03",
+        "ID-04",
+        "ID-05",
+        "ID-06"
+      ],
+      "signal_count": 6
+    },
+    {
+      "id": "SDLCProductManagement",
+      "label": "SDLC and Product Management Process",
+      "pillar_number": 7,
+      "signal_ids": [
+        "SP-01",
+        "SP-02",
+        "SP-03"
+      ],
+      "signal_count": 3
+    }
+  ]
+}
