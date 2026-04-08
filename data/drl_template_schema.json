@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "tabs": {
+    "Technology": {
+      "id": "technology",
+      "type": "request_list",
+      "key_columns": {
+        "function": "Function",
+        "request": "Request",
+        "date_requested": "Date Requested",
+        "date_responded": "Date Responded",
+        "dataroom_location": "Dataroom Location"
+      },
+      "field_identification": "each_row_is_a_field",
+      "maps_to_lenses": ["StrategyRoadmap", "TechnologyArchitecture", "EngineeringDelivery", "CybersecurityCompliance", "OperationalEfficiency"],
+      "maps_to_signals": ["SA-01", "SA-02", "SA-03", "TA-01", "TA-02", "TA-03", "TA-04", "CC-01", "CC-03"]
+    },
+    "SoftwareDevTools": {
+      "id": "software_dev_tools",
+      "type": "inventory_table",
+      "key_columns": {
+        "id": "ID",
+        "function": "Function",
+        "tool_name": "Tool/Product Name",
+        "version": "Version",
+        "num_users": "# Users",
+        "annual_cost": "Annual Licensing Cost"
+      },
+      "field_identification": "each_row_is_a_field",
+      "expected_row_count": 13,
+      "maps_to_lenses": ["EngineeringDelivery", "TechnologyArchitecture"],
+      "maps_to_signals": ["ED-01", "ED-02", "ED-03", "TA-05"]
+    },
+    "SystemsSecurityInfra": {
+      "id": "systems_security_infra",
+      "type": "inventory_table",
+      "key_columns": {
+        "system_name": "IT System Detail",
+        "vendor": "Vendor/Provider",
+        "version": "Version",
+        "hosting": "Hosting (Cloud/On-Prem)",
+        "annual_cost": "Annual Cost",
+        "contract_end": "Contract End Date",
+        "users": "# Users"
+      },
+      "field_identification": "each_row_is_a_field",
+      "maps_to_lenses": ["InfrastructureTechnology", "CybersecurityCompliance", "ThirdPartyVendorRisk"],
+      "maps_to_signals": ["IT-01", "IT-02", "IT-03", "CC-05", "CC-06", "TV-01", "TV-02"]
+    },
+    "RDSpend": {
+      "id": "rd_spend",
+      "type": "financial_table",
+      "key_columns": {
+        "category": "Category",
+        "actual_2024": "2024 Actual",
+        "actual_2025": "2025 Actual",
+        "budget_2026": "2026 Budgeted",
+        "ytd_2026": "2026 YTD",
+        "annualized_2026": "2026 Annualized"
+      },
+      "field_identification": "each_row_is_a_field",
+      "maps_to_lenses": ["ValueCreationPotential", "StrategyRoadmap"],
+      "maps_to_signals": ["SA-02", "VC-01", "VC-02"]
+    },
+    "CensusInput": {
+      "id": "census_input",
+      "type": "roster_table",
+      "key_columns": {
+        "sno": "S.No.",
+        "name": "Employee Name",
+        "location": "Location",
+        "country": "Country",
+        "job_title": "Job Title",
+        "team": "Team"
+      },
+      "field_identification": "row_count_matters",
+      "maps_to_lenses": ["OrganizationTalent"],
+      "maps_to_signals": ["OT-01", "OT-02", "OT-03", "OT-04", "OT-05"]
+    }
+  }
+}

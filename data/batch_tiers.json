@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "description": "VDR batch processing tiers for selective scan optimization. Defines which document batches should be processed in which order, with estimated scan times and priority levels.",
+  "tiers": {
+    "core_tech": {
+      "label": "Core Tech",
+      "tier": 1,
+      "description": "Security assessments, compliance certs, architecture docs — highest signal density. These documents are most likely to contain deal-material findings and should always be processed first.",
+      "auto_select": true,
+      "estimated_minutes": 25,
+      "batch_groups": [
+        "security_pen_tests",
+        "security_compliance",
+        "architecture_docs",
+        "code_repos",
+        "infrastructure"
+      ]
+    },
+    "supporting_context": {
+      "label": "Supporting Context",
+      "tier": 2,
+      "description": "Org charts, financials, product docs — provides context for tech findings. These help practitioners validate and contextualize core tech signals, but are secondary to security/architecture.",
+      "auto_select": false,
+      "estimated_minutes": 15,
+      "batch_groups": [
+        "org_structure",
+        "financials",
+        "product_docs",
+        "contracts",
+        "hr_data"
+      ]
+    },
+    "uncategorised": {
+      "label": "Uncategorised",
+      "tier": 3,
+      "description": "Documents that don't match known batch rules — may contain surprises. These are lowest priority because they may be marketing materials, historical artifacts, or other non-diligence documents.",
+      "auto_select": false,
+      "estimated_minutes": 10,
+      "batch_groups": [
+        "uncategorised"
+      ]
+    }
+  },
+  "notes": {
+    "core_tech_rationale": "Security, compliance, and architectural findings are the primary value drivers in tech diligence. A company with solid security controls, clear architecture, and clean compliance story can proceed to deeper diligence quickly. Core Tech scans establish the risk baseline.",
+    "supporting_context_rationale": "These batches provide essential context (org structure, financials, product clarity) but are secondary to core tech assessment. Only worth full extraction if core tech signals are borderline or require validation.",
+    "uncategorised_rationale": "These documents are likely non-diligence materials or low-signal content. They should only be processed if time permits or if specific signals require additional evidence.",
+    "timing_note": "Estimated times assume Claude API extraction with 500-token average output per document. Actual wall-clock time depends on API latency and document complexity.",
+    "practitioner_guidance": "For time-constrained diligence, run Tier 1 (Core Tech) immediately. This takes ~25 mins and establishes the risk profile. Flag Tier 2 for practitioner review to decide whether to proceed with full extraction."
+  }
+}
