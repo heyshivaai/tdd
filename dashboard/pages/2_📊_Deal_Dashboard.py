@@ -112,6 +112,27 @@ st.markdown("""
     padding: 10px 14px; margin-bottom: 8px;
 }
 
+/* Confidence bar */
+.conf-bar { display:flex; height:22px; border-radius:6px; overflow:hidden; margin:6px 0; }
+.conf-bar .seg-HIGH   { background:#16a34a; }
+.conf-bar .seg-MEDIUM { background:#d97706; }
+.conf-bar .seg-LOW    { background:#dc2626; }
+
+/* Review urgency badges */
+.urgency-CRITICAL { background:#fef2f2; color:#dc2626; border:1px solid #fca5a5;
+    display:inline-block; border-radius:12px; padding:2px 10px; font-size:0.75rem; font-weight:700; }
+.urgency-HIGH { background:#fff7ed; color:#ea580c; border:1px solid #fdba74;
+    display:inline-block; border-radius:12px; padding:2px 10px; font-size:0.75rem; font-weight:700; }
+.urgency-MEDIUM { background:#fffbeb; color:#d97706; border:1px solid #fcd34d;
+    display:inline-block; border-radius:12px; padding:2px 10px; font-size:0.75rem; font-weight:700; }
+
+/* Feedback panel */
+.feedback-panel {
+    background: linear-gradient(135deg, #fefce8 0%, #fff7ed 100%);
+    border: 1px solid #fed7aa; border-radius: 12px;
+    padding: 20px 24px; margin-top: 16px;
+}
+
 /* Section header */
 .section-hdr {
     font-size: 1.05rem; font-weight: 700; color: #0f172a;
@@ -609,6 +630,58 @@ with phase_tabs[0]:
         r3.metric("🟢 GREEN", rating_counts.get("GREEN", 0))
         r4.metric("Total Signals", len(all_signals))
 
+        # ── Signal Confidence Summary ──────────────────────────────────────
+        conf_counts = Counter()
+        medium_conf_signals = []
+        low_conf_signals = []
+        for sig in all_signals:
+            c = (sig.get("confidence") or "unknown").upper()
+            conf_counts[c] += 1
+            if c == "MEDIUM":
+                medium_conf_signals.append(sig)
+            elif c in ("LOW", "UNKNOWN", ""):
+                low_conf_signals.append(sig)
+
+        total_sigs = len(all_signals)
+        high_pct = round(conf_counts.get("HIGH", 0) / total_sigs * 100) if total_sigs else 0
+        med_pct = round(conf_counts.get("MEDIUM", 0) / total_sigs * 100) if total_sigs else 0
+        low_pct = round((conf_counts.get("LOW", 0) + conf_counts.get("UNKNOWN", 0)) / total_sigs * 100) if total_sigs else 0
+
+        needs_review = len(medium_conf_signals) + len(low_conf_signals)
+
+        with st.container():
+            c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 2])
+            c1.metric("🟢 HIGH Conf.", conf_counts.get("HIGH", 0))
+            c2.metric("🟡 MEDIUM Conf.", conf_counts.get("MEDIUM", 0))
+            c3.metric("🔴 LOW Conf.", conf_counts.get("LOW", 0) + conf_counts.get("UNKNOWN", 0))
+            c4.metric("👁️ Needs Review", needs_review)
+            with c5:
+                bar_html = (
+                    f'<div style="font-size:0.78rem;color:#64748b;margin-bottom:4px">'
+                    f'Confidence Distribution</div>'
+                    f'<div class="conf-bar">'
+                    f'<div class="seg-HIGH" style="width:{high_pct}%" title="HIGH: {high_pct}%"></div>'
+                    f'<div class="seg-MEDIUM" style="width:{med_pct}%" title="MEDIUM: {med_pct}%"></div>'
+                    f'<div class="seg-LOW" style="width:{low_pct}%" title="LOW: {low_pct}%"></div>'
+                    f'</div>'
+                    f'<div style="font-size:0.72rem;color:#94a3b8;margin-top:2px">'
+                    f'HIGH {high_pct}% · MEDIUM {med_pct}% · LOW {low_pct}%</div>'
+                )
+                st.markdown(bar_html, unsafe_allow_html=True)
+
+            # Show MEDIUM/LOW confidence signals that need review
+            if needs_review > 0:
+                with st.expander(f"⚠️ {needs_review} signal(s) need practitioner review"):
+                    for sig in (low_conf_signals + medium_conf_signals):
+                        sid = sig.get("signal_id", "?")
+                        title = sig.get("title", "")
+                        conf = sig.get("confidence", "unknown")
+                        note = sig.get("extraction_note", "")
+                        emoji = "🔴" if conf.upper() in ("LOW", "UNKNOWN") else "🟡"
+                        st.markdown(f"{emoji} **{sid}** — {title} · Confidence: **{conf}**")
+                        if note:
+                            st.caption(f"AI note: {note}")
+
         st.markdown("---")
 
         # Pillar signal heatmap
@@ -1069,3 +1142,236 @@ if domain_data:
                     st.caption(f"Note: {note}")
                 if src:
                     st.caption(f"Source: {src}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PRACTITIONER REVIEW — Download Excel, Upload Feedback, View Recalibration
+# ══════════════════════════════════════════════════════════════════════════════
+
+st.markdown('<div class="section-hdr">🔄 Practitioner Review & Feedback</div>', unsafe_allow_html=True)
+st.caption(
+    "Download pre-populated review workbooks for practitioners. "
+    "Upload completed feedback to recalibrate the system."
+)
+
+# ── Download Section ──────────────────────────────────────────────────────
+_review_col1, _review_col2, _review_col3 = st.columns([1, 1, 2])
+
+# Gate 1 Excel
+_gate1_xlsx = OUTPUTS_DIR / selected_company / "review_gate1.xlsx"
+with _review_col1:
+    if _gate1_xlsx.exists():
+        with open(_gate1_xlsx, "rb") as _f:
+            st.download_button(
+                "📥 Gate 1: VDR Signal Review",
+                data=_f.read(),
+                file_name=f"{selected_company}_signal_review.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                help="Pre-populated workbook with all VDR signals, sorted by review urgency. "
+                     "Practitioner fills verdict (CONFIRMED/NOISE/UNCERTAIN), corrected ratings, and notes.",
+            )
+    else:
+        if has_vdr_data and st.button("⚙️ Generate Gate 1 Workbook", use_container_width=True, key="gen_g1"):
+            try:
+                from tools.practitioner_review import generate_gate1_manifest, save_review_manifest
+                from tools.review_exporter import export_gate1_workbook
+                _g1_manifest = generate_gate1_manifest(brief, brief.get("deal_id", selected_company), selected_company)
+                save_review_manifest(_g1_manifest)
+                export_gate1_workbook(_g1_manifest)
+                st.success("Gate 1 workbook generated!")
+                st.rerun()
+            except Exception as _exc:
+                st.error(f"Failed to generate: {_exc}")
+
+# Gate 2 Excel
+_gate2_xlsx = OUTPUTS_DIR / selected_company / "review_gate2.xlsx"
+with _review_col2:
+    if _gate2_xlsx.exists():
+        with open(_gate2_xlsx, "rb") as _f:
+            st.download_button(
+                "📥 Gate 2: Agent Finding Review",
+                data=_f.read(),
+                file_name=f"{selected_company}_finding_review.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                help="Pre-populated workbook with all agent findings, blind spots, and chase questions. "
+                     "Practitioner fills verdict, priority (P1-P4), remediation effort, and assignments.",
+            )
+    else:
+        if has_agent_data and st.button("⚙️ Generate Gate 2 Workbook", use_container_width=True, key="gen_g2"):
+            try:
+                from tools.practitioner_review import generate_gate2_manifest, save_review_manifest
+                from tools.review_exporter import export_gate2_workbook
+                import os as _os
+                _agents_dir = OUTPUTS_DIR / selected_company / "agents"
+                _agent_reports = {}
+                if _agents_dir.exists():
+                    for _af in _agents_dir.glob("*.json"):
+                        with open(_af) as _fh:
+                            _agent_reports[_af.stem] = json.load(_fh)
+                _g2_manifest = generate_gate2_manifest(
+                    _agent_reports, domain_data,
+                    brief.get("deal_id", selected_company), selected_company,
+                )
+                save_review_manifest(_g2_manifest)
+                export_gate2_workbook(_g2_manifest)
+                st.success("Gate 2 workbook generated!")
+                st.rerun()
+            except Exception as _exc:
+                st.error(f"Failed to generate: {_exc}")
+
+# Review manifest stats
+with _review_col3:
+    _g1_manifest_path = OUTPUTS_DIR / selected_company / "practitioner_review_gate1.json"
+    _g2_manifest_path = OUTPUTS_DIR / selected_company / "practitioner_review_gate2.json"
+    _has_g1 = _g1_manifest_path.exists()
+    _has_g2 = _g2_manifest_path.exists()
+
+    if _has_g1 or _has_g2:
+        _stats_parts = []
+        if _has_g1:
+            with open(_g1_manifest_path) as _f:
+                _g1m = json.load(_f)
+            _g1_urgency = _g1m.get("summary", {}).get("urgency_distribution", {})
+            _stats_parts.append(
+                f"**Gate 1:** {_g1m['summary']['total_items']} items — "
+                f"🔴 {_g1_urgency.get('CRITICAL', 0)} critical · "
+                f"🟠 {_g1_urgency.get('HIGH', 0)} high · "
+                f"🟡 {_g1_urgency.get('MEDIUM', 0)} medium"
+            )
+        if _has_g2:
+            with open(_g2_manifest_path) as _f:
+                _g2m = json.load(_f)
+            _g2_urgency = _g2m.get("summary", {}).get("urgency_distribution", {})
+            _g2_summary = _g2m.get("summary", {})
+            _stats_parts.append(
+                f"**Gate 2:** {_g2_summary.get('total_findings', 0)} findings, "
+                f"{_g2_summary.get('total_blind_spots', 0)} blind spots — "
+                f"🔴 {_g2_urgency.get('CRITICAL', 0)} critical · "
+                f"🟠 {_g2_urgency.get('HIGH', 0)} high"
+            )
+        for _sp in _stats_parts:
+            st.markdown(_sp)
+    else:
+        st.info("Review workbooks will be generated automatically after scans complete.")
+
+
+# ── Upload Section ────────────────────────────────────────────────────────
+st.markdown("---")
+st.markdown("**Upload Completed Feedback**")
+
+_up_col1, _up_col2 = st.columns([3, 1])
+with _up_col1:
+    _uploaded_file = st.file_uploader(
+        "Drop the completed review Excel here",
+        type=["xlsx"],
+        key="feedback_upload",
+        help="Upload the filled-in Gate 1 or Gate 2 Excel workbook. "
+             "The system will parse verdicts, compute accuracy, and update the Signal Intelligence Layer.",
+    )
+
+with _up_col2:
+    _gate_choice = st.radio("Gate", [1, 2], horizontal=True, key="feedback_gate")
+    _practitioner_name = st.text_input("Practitioner", value="", key="feedback_practitioner", placeholder="Name")
+
+if _uploaded_file is not None:
+    if st.button("🚀 Ingest Feedback", type="primary", use_container_width=True, key="ingest_feedback"):
+        try:
+            # Save uploaded file to temp location
+            _tmp_path = OUTPUTS_DIR / selected_company / f"_uploaded_review_gate{_gate_choice}.xlsx"
+            with open(_tmp_path, "wb") as _f:
+                _f.write(_uploaded_file.getvalue())
+
+            from tools.feedback_importer import ingest_feedback
+            _result = ingest_feedback(
+                filepath=str(_tmp_path),
+                deal_id=brief.get("deal_id", selected_company) if brief else selected_company,
+                gate=_gate_choice,
+                practitioner=_practitioner_name or "practitioner",
+                company_name=selected_company,
+            )
+
+            _acc = _result["accuracy"]
+
+            st.success(f"Feedback ingested! Reviewed {_acc['reviewed']}/{_acc['total_items']} items.")
+
+            # Show accuracy metrics
+            _acc_col1, _acc_col2, _acc_col3, _acc_col4 = st.columns(4)
+            _acc_col1.metric("Accuracy", f"{_acc.get('accuracy_pct', 'N/A')}%")
+            _acc_col2.metric("Noise Rate", f"{_acc.get('noise_rate_pct', 'N/A')}%")
+            _acc_col3.metric("Over-rated", _acc.get("over_rated_count", 0))
+            _acc_col4.metric("Under-rated", _acc.get("under_rated_count", 0))
+
+            # Learning signals
+            _learning = _acc.get("learning_signals", [])
+            if _learning:
+                st.markdown("**Learning Signals:**")
+                for _ls in _learning:
+                    st.markdown(f"- {_ls}")
+
+            # Trigger recalibration engine
+            try:
+                from tools.recalibration_engine import ingest_deal_feedback
+                _deal_id = brief.get("deal_id", selected_company) if brief else selected_company
+                ingest_deal_feedback(_deal_id, selected_company)
+                st.caption("✅ Cross-deal recalibration state updated.")
+            except Exception as _recal_exc:
+                st.caption(f"⚠️ Recalibration update skipped: {_recal_exc}")
+
+            st.info(f"Pinecone: {_result['pinecone_updated']} signal verdicts synced.")
+
+        except Exception as _exc:
+            st.error(f"Feedback ingestion failed: {_exc}")
+
+
+# ── Recalibration Insights (if feedback has been provided) ────────────────
+_recal_state_path = OUTPUTS_DIR / "_recalibration_state.json"
+_deal_recal_g1 = OUTPUTS_DIR / selected_company / "recalibration_report_gate1.json"
+_deal_recal_g2 = OUTPUTS_DIR / selected_company / "recalibration_report_gate2.json"
+
+_has_recal = _recal_state_path.exists() or _deal_recal_g1.exists() or _deal_recal_g2.exists()
+
+if _has_recal:
+    st.markdown("---")
+    with st.expander("📊 Recalibration Insights", expanded=False):
+        # Deal-level recalibration
+        for _gate_n, _recal_path in [(1, _deal_recal_g1), (2, _deal_recal_g2)]:
+            if _recal_path.exists():
+                with open(_recal_path) as _f:
+                    _recal = json.load(_f)
+                st.markdown(f"**Gate {_gate_n} — {selected_company}**")
+                _rc1, _rc2, _rc3, _rc4 = st.columns(4)
+                _rc1.metric("Accuracy", f"{_recal.get('accuracy_pct', 'N/A')}%")
+                _rc2.metric("Noise", f"{_recal.get('noise_rate_pct', 'N/A')}%")
+                _rc3.metric("Reviewed", f"{_recal.get('reviewed', 0)}/{_recal.get('total_items', 0)}")
+                _rc4.metric("Rating Drifts", len(_recal.get("rating_drifts", [])))
+
+                for _ls in _recal.get("learning_signals", []):
+                    st.markdown(f"- {_ls}")
+                st.markdown("")
+
+        # Cross-deal recalibration
+        if _recal_state_path.exists():
+            try:
+                from tools.recalibration_engine import get_recalibration_summary
+                _cross = get_recalibration_summary()
+                if _cross.get("deals_analyzed", 0) > 0:
+                    st.markdown(f"**Cross-Deal Intelligence** ({_cross['deals_analyzed']} deal(s))")
+                    _xc1, _xc2 = st.columns(2)
+                    _xc1.metric("Signal Accuracy", f"{_cross.get('signal_accuracy_pct', 'N/A')}%",
+                                delta=f"{_cross.get('signal_reviews_total', 0)} reviews")
+                    if _cross.get("finding_accuracy_pct") is not None:
+                        _xc2.metric("Finding Accuracy", f"{_cross['finding_accuracy_pct']}%",
+                                    delta=f"{_cross.get('finding_reviews_total', 0)} reviews")
+
+                    for _ls in _cross.get("learning_signals", []):
+                        st.markdown(f"- {_ls}")
+
+                    for _np in _cross.get("noise_patterns", []):
+                        st.warning(f"🔇 {_np.get('recommendation', '')}")
+
+                    for _dp in _cross.get("drift_patterns", []):
+                        st.info(f"📏 {_dp.get('recommendation', '')}")
+            except Exception as _cross_exc:
+                st.caption(f"Cross-deal insights unavailable: {_cross_exc}")

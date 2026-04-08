@@ -1,9 +1,9 @@
 """
-Quinn Schema Guardian — Upload, version, and manage DRL templates and signal catalogs.
+Platform Config — Manage the diligence framework: DRL templates, signal catalogs, and schema versions.
 
-Partners upload new templates/catalogs here. Quinn fingerprints them, detects
-changes, runs semantic impact analysis via Claude, and shows migration status
-across all deals.
+Partners and admins use this page to upload new templates/catalogs. Quinn (the
+schema guardian engine) fingerprints them, detects changes, runs semantic impact
+analysis via Claude, and shows migration status across all deals.
 
 Sections:
   1. Upload — drop in new DRL template (Excel) or signal catalog (JSON)
@@ -41,14 +41,14 @@ from tools.quinn_version_registry import (
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Quinn Schema Guardian | TDD Platform",
-    page_icon="🔧",
+    page_title="Platform Config | TDD Platform",
+    page_icon="⚙️",
     layout="wide",
 )
-st.title("🔧 Quinn — Schema Guardian")
+st.title("⚙️ Platform Config")
 st.caption(
-    "Upload new DRL templates and signal catalogs. Quinn detects changes, "
-    "analyzes impact, and flags deals that need reprocessing."
+    "Manage the diligence framework — DRL templates, signal catalogs, and schema versions. "
+    "Quinn monitors changes and flags deals that need reprocessing."
 )
 
 DATA_DIR = PROJECT_ROOT / "data"
