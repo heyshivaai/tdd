@@ -37,6 +37,7 @@ from tools.drl_version_store import (
     compute_field_diff,
     save_field_diff,
 )
+from tools.deal_manager import list_deals
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE CONFIG & STYLES
@@ -131,6 +132,19 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ── Sidebar: clickable deals ────────────────────────────────────────────────
+with st.sidebar:
+    st.subheader("Deals")
+    all_deals = list_deals()
+    if all_deals:
+        st.caption("Available Deals")
+        for deal in all_deals[:10]:
+            deal_sid = deal.get("deal_id", "unknown")
+            company = deal.get("company_name", "?")
+            if st.button(f"{company} — {deal_sid}", key=f"sidebar_deal_{deal_sid}", use_container_width=True):
+                st.session_state["selected_deal_override"] = deal_sid
+                st.rerun()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # INPUT SECTION: Deal selector + DRL upload
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,13 +153,32 @@ st.markdown('<div class="section-hdr">Upload DRL Excel</div>', unsafe_allow_html
 col1, col2 = st.columns([2, 3])
 
 with col1:
-    deal_id = st.text_input(
-        "Deal ID",
-        value=st.session_state.get("selected_deal_id", ""),
-        placeholder="e.g., HORIZON, ACME-001",
-        help="Used to organize and track DRL versions for this deal.",
-    )
-    st.session_state.selected_deal_id = deal_id
+    # Deal selector with dropdown
+    all_deals = list_deals()
+    deal_options = {d["deal_id"]: d for d in all_deals} if all_deals else {}
+
+    if deal_options:
+        deal_keys = list(deal_options.keys())
+        default_index = 0
+        if "selected_deal_override" in st.session_state and st.session_state["selected_deal_override"] in deal_keys:
+            default_index = deal_keys.index(st.session_state["selected_deal_override"])
+
+        deal_id = st.selectbox(
+            "Select Deal",
+            options=deal_keys,
+            index=default_index,
+            format_func=lambda d: f"{deal_options[d]['company_name']} — {d}",
+            help="Choose a deal or enter manually below",
+        )
+        st.session_state.selected_deal_id = deal_id
+    else:
+        deal_id = st.text_input(
+            "Deal ID",
+            value=st.session_state.get("selected_deal_id", ""),
+            placeholder="e.g., HORIZON, ACME-001",
+            help="Used to organize and track DRL versions for this deal.",
+        )
+        st.session_state.selected_deal_id = deal_id
 
 with col2:
     uploaded_file = st.file_uploader(

@@ -67,7 +67,11 @@ BATCH_TO_PILLARS = {
     # so new signals (org structure, spend economics, tooling, etc.) get extracted
     "financial_data": ["RDSpendAssessment", "InfrastructureDeployment"],
     "corporate_overview": ["SDLCProductManagement", "OrganizationTalent", "RDSpendAssessment"],
-    "general": [],  # Gets all pillars
+    "general": [  # Uncategorised docs get scanned across all pillars
+        "TechnologyArchitecture", "SecurityCompliance", "OrganizationTalent",
+        "DataAIReadiness", "RDSpendAssessment", "InfrastructureDeployment",
+        "SDLCProductManagement",
+    ],
 }
 
 # Backward compatibility alias for external consumers

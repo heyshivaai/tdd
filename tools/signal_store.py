@@ -14,7 +14,6 @@ import os
 from typing import List
 
 from dotenv import load_dotenv
-from pinecone import Pinecone
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -22,9 +21,33 @@ logger = logging.getLogger(__name__)
 INDEX_NAME = "tdd-signals"
 NAMESPACE = "deals"
 
+# Lazy Pinecone import — gracefully degrade if not installed or misconfigured
+_pinecone_available = None
+
+
+def _check_pinecone() -> bool:
+    """Check if Pinecone is available and configured. Caches result."""
+    global _pinecone_available
+    if _pinecone_available is not None:
+        return _pinecone_available
+    try:
+        from pinecone import Pinecone as _PC  # noqa: F401
+        if not os.environ.get("PINECONE_API_KEY"):
+            logger.info("PINECONE_API_KEY not set — Signal Intelligence Layer disabled (local-only mode)")
+            _pinecone_available = False
+        else:
+            _pinecone_available = True
+    except ImportError:
+        logger.info("pinecone package not installed — Signal Intelligence Layer disabled (local-only mode)")
+        _pinecone_available = False
+    return _pinecone_available
+
 
 def _get_index():
-    """Return a Pinecone index handle. Called fresh per operation."""
+    """Return a Pinecone index handle. Called fresh per operation. Returns None if unavailable."""
+    if not _check_pinecone():
+        return None
+    from pinecone import Pinecone
     pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
     return pc.Index(INDEX_NAME)
 
@@ -37,6 +60,9 @@ def store_signals(signals: List[dict], deal_id: str, sector: str, phase: int = 0
     Returns count of records upserted.
     """
     index = _get_index()
+    if index is None:
+        logger.debug("Skipping signal store (Pinecone not available)")
+        return 0
     records = []
     for sig in signals:
         signal_text = (
@@ -75,6 +101,8 @@ def store_gap(gap: dict, deal_id: str, sector: str) -> None:
     are valuable signals themselves — the system learns which gaps are common vs. unusual.
     """
     index = _get_index()
+    if index is None:
+        return
     record = {
         "_id": f"{deal_id}_{gap['gap_id']}",
         "signal_text": f"Missing: {gap['expected_document']} | {gap.get('reason_expected', '')}",
@@ -106,6 +134,8 @@ def query_similar_patterns(
     Returns empty list on any error so callers degrade gracefully.
     """
     index = _get_index()
+    if index is None:
+        return []
     query_filter: dict = {"sector": {"$eq": sector}}
     if lens:
         query_filter["lens"] = {"$eq": lens}
@@ -144,6 +174,8 @@ def update_signal_verdict(
     Called after a Human Gate feedback session to calibrate future scans.
     """
     index = _get_index()
+    if index is None:
+        return
     record_id = f"{deal_id}_{signal_id}"
     fields = {"practitioner_verdict": verdict}
     if corrected_rating:

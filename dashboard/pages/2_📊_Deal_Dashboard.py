@@ -271,10 +271,25 @@ if not deals:
     st.info("No completed scans with signal data yet. Run a scan from **New Scan** first.")
     st.stop()
 
+# ── Sidebar: clickable deals ────────────────────────────────────────────────
+with st.sidebar:
+    st.subheader("Deals")
+    for deal in deals[:10]:
+        company = deal.get("company", "?")
+        deal_id = deal.get("deal_id", "unknown")
+        rating = deal.get("rating", "UNKNOWN")
+        icon = {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}.get(rating, "⚪")
+        if st.button(f"{icon} {company} — {deal_id}", key=f"sidebar_deal_{deal_id}", use_container_width=True):
+            st.session_state["selected_deal_override"] = company
+            st.rerun()
+
 # Deal selector
 company_names = [d["company"] for d in deals]
-preselected = st.session_state.get("selected_deal", None)
-default_idx = company_names.index(preselected) if preselected in company_names else 0
+
+# Check for override from sidebar click
+default_idx = 0
+if "selected_deal_override" in st.session_state and st.session_state["selected_deal_override"] in company_names:
+    default_idx = company_names.index(st.session_state["selected_deal_override"])
 
 selected_company = st.selectbox(
     "Select deal",

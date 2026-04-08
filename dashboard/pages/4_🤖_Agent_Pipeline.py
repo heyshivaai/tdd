@@ -47,9 +47,28 @@ with st.sidebar:
         st.stop()
 
     deal_options = {d["deal_id"]: d for d in all_deals}
+
+    # Clickable deal buttons
+    st.caption("Active Deals")
+    for deal in all_deals[:10]:
+        deal_sid = deal.get("deal_id", "unknown")
+        company = deal.get("company_name", "?")
+        if st.button(f"{company} — {deal_sid}", key=f"sidebar_deal_{deal_sid}", use_container_width=True):
+            st.session_state["selected_deal_override"] = deal_sid
+            st.rerun()
+
+    st.divider()
+
+    # Deal selector with override logic
+    deal_keys = list(deal_options.keys())
+    default_index = 0
+    if "selected_deal_override" in st.session_state and st.session_state["selected_deal_override"] in deal_keys:
+        default_index = deal_keys.index(st.session_state["selected_deal_override"])
+
     selected_deal_id = st.selectbox(
         "Select Deal",
-        options=list(deal_options.keys()),
+        options=deal_keys,
+        index=default_index,
         help="Choose which deal to manage.",
     )
 

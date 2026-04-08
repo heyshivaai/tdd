@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 
 from tools.completeness_checker import check_completeness
 from tools.cross_referencer import cross_reference_signals
-from tools.document_reader import extract_text_from_pdf
+from tools.document_reader import extract_text, extract_text_from_pdf
 from tools.report_writer import (
     write_completeness_report,
     write_feedback_shell,
@@ -119,7 +119,12 @@ def run_triage(
     for batch_id, docs in batch_groups.items():
         enriched_docs = []
         for doc in docs:
-            chunks = extract_text_from_pdf(doc["filepath"])
+            # Use generic extract_text which handles PDF, DOCX, XLSX, etc.
+            file_type = doc.get("file_type", ".pdf")
+            if file_type == ".pdf":
+                chunks = extract_text_from_pdf(doc["filepath"])
+            else:
+                chunks = extract_text(doc["filepath"])
             enriched_docs.append({**doc, "text_chunks": chunks})
 
         total_chunks = sum(len(d["text_chunks"]) for d in enriched_docs)

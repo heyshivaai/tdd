@@ -186,3 +186,22 @@ def cleanup_stale_scans(max_age_hours: int = 24) -> int:
         _save_registry(registry)
 
     return len(stale)
+
+
+def remove_scan(company_name: str) -> bool:
+    """
+    Remove a scan record from the registry.
+
+    Args:
+        company_name: Company name key to remove.
+
+    Returns:
+        True if removed, False if not found.
+    """
+    registry = _load_registry()
+    if company_name not in registry:
+        return False
+    del registry[company_name]
+    _save_registry(registry)
+    logger.info("Removed scan record for %s", company_name)
+    return True

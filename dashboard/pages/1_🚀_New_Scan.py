@@ -47,13 +47,17 @@ if VDR_ROOT.exists():
 # ── Sidebar ─────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.subheader("Deals & Scans")
-    all_deals = list_deals()
-    if all_deals:
+    all_deals_sidebar = list_deals()
+    if all_deals_sidebar:
         st.caption("Active Deals")
-        for deal in all_deals[:5]:
+        for deal in all_deals_sidebar[:5]:
+            deal_sid = deal.get("deal_id", "unknown")
+            company = deal.get("company_name", "?")
             scan_status = deal.get("scan_status", "not_started")
             icon = {"not_started": "⚪", "in_progress": "🔄", "completed": "✅", "failed": "❌"}.get(scan_status, "❓")
-            st.text(f"{icon} {deal['deal_id']} — {deal.get('company_name', '?')}")
+            if st.button(f"{icon} {company} — {deal_sid}", key=f"sidebar_deal_{deal_sid}", use_container_width=True):
+                st.session_state["selected_deal_override"] = deal_sid
+                st.rerun()
 
     st.divider()
     st.caption("Recent Scans")
@@ -73,7 +77,13 @@ if not deal_options:
     st.info("No deals found. Go to **🆕 New Deal** to create one first.")
     st.stop()
 
-selected_deal_id = st.selectbox("Select Deal", options=list(deal_options.keys()))
+# If a deal was clicked in sidebar, pre-select it
+default_index = 0
+deal_keys = list(deal_options.keys())
+if "selected_deal_override" in st.session_state and st.session_state["selected_deal_override"] in deal_keys:
+    default_index = deal_keys.index(st.session_state["selected_deal_override"])
+
+selected_deal_id = st.selectbox("Select Deal", options=deal_keys, index=default_index)
 selected_deal = deal_options[selected_deal_id]
 
 col1, col2 = st.columns(2)

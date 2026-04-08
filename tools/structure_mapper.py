@@ -1,6 +1,8 @@
 """
-Structure mapper: walks a VDR folder and builds an inventory of all PDF files,
+Structure mapper: walks a VDR folder and builds an inventory of all document files,
 assigning each file to a batch group based on filename pattern matching.
+
+Supported file types: PDF, XLSX/XLS, DOCX/DOC, CSV, PPTX, TXT.
 
 Why: Before extracting signals, we need to know what exists and which files
 belong together (e.g., all pen tests in one batch). Batch grouping gives Claude
@@ -9,6 +11,9 @@ cross-document context within a related set.
 import json
 from pathlib import Path
 from typing import List, Dict, Any
+
+# All document file extensions the mapper should pick up
+SUPPORTED_EXTENSIONS = {".pdf", ".xlsx", ".xls", ".docx", ".doc", ".csv", ".pptx", ".txt"}
 
 
 def map_vdr_structure(vdr_path: str, batch_rules_path: str) -> Dict[str, Any]:
@@ -22,7 +27,7 @@ def map_vdr_structure(vdr_path: str, batch_rules_path: str) -> Dict[str, Any]:
     Returns:
         Dict with keys:
             - "inventory": List of document dicts (filename, filepath, vdr_section,
-                         batch_group, size_bytes)
+                         batch_group, size_bytes, file_type)
             - "batch_groups": dict mapping batch_group -> list of document dicts
     """
     with open(batch_rules_path) as f:
@@ -34,7 +39,13 @@ def map_vdr_structure(vdr_path: str, batch_rules_path: str) -> Dict[str, Any]:
     root = Path(vdr_path)
     inventory: List[Dict[str, Any]] = []
 
-    for filepath in sorted(root.rglob("*.pdf")):
+    # Collect all supported document types, not just PDFs
+    all_files = sorted(
+        f for f in root.rglob("*")
+        if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+    )
+
+    for filepath in all_files:
         relative = filepath.relative_to(root)
         vdr_section = str(relative.parent) if relative.parent != Path(".") else "root"
         batch_group = assign_batch_group(filepath.name.lower(), rules, default_group)
@@ -46,6 +57,7 @@ def map_vdr_structure(vdr_path: str, batch_rules_path: str) -> Dict[str, Any]:
                 "vdr_section": vdr_section,
                 "batch_group": batch_group,
                 "size_bytes": filepath.stat().st_size,
+                "file_type": filepath.suffix.lower(),
             }
         )
 
