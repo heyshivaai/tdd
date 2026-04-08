@@ -301,9 +301,32 @@ if "running_chain" in st.session_state and st.session_state.running_chain:
         time.sleep(2)
         st.rerun()
 
-# ── Detailed agent status ────────────────────────────────────────────────────
+# ── Detailed agent reports ─────────────────────────────────────────────────
 st.markdown("---")
-st.subheader("Agent Details")
+st.subheader("Agent Reports")
+st.caption("Expand any agent to see full findings, evidence chains, and download the raw report.")
+
+import json as _json
+
+# Report key mapping — agent name to the key inside the JSON that holds the report
+_REPORT_KEYS = {
+    "alex": "alex",
+    "morgan": "morgan_intelligence_report",
+    "jordan": "jordan_repository_report",
+    "riley": "riley_security_report",
+    "casey": "casey_code_quality_report",
+    "taylor": "taylor_infrastructure_report",
+    "drew": "drew_benchmarking_report",
+    "sam": "sam_final_report",
+}
+
+_RATING_MAP = {
+    "CRITICAL": "RED", "CONCERNING": "YELLOW", "STRONG": "GREEN",
+    "ADEQUATE": "GREEN", "RED": "RED", "YELLOW": "YELLOW", "GREEN": "GREEN",
+}
+
+_GRADE_EMOJI = {"RED": "🔴", "YELLOW": "🟡", "GREEN": "🟢"}
+_SEV_EMOJI = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}
 
 for agent_def in AGENT_CHAIN:
     agent_name = agent_def["name"]
@@ -314,29 +337,235 @@ for agent_def in AGENT_CHAIN:
     status = agent_info.get("status", "pending")
     completed_at = agent_info.get("completed_at")
 
-    with st.expander(f"{agent_label} — {status.upper()}"):
-        col1, col2 = st.columns([2, 1])
+    # Load output for completed agents
+    output = get_agent_output(selected_deal_id, agent_name) if status == "completed" else None
 
-        with col1:
+    # Extract report from the nested structure
+    report = None
+    grade = "—"
+    confidence = "—"
+    findings = []
+    summary_text = ""
+
+    if output:
+        report_key = _REPORT_KEYS.get(agent_name, agent_name)
+        report = output.get(report_key, output)
+
+        # Grade
+        raw_rating = (
+            report.get("overall_domain_rating")
+            or report.get("overall_rating")
+            or report.get("domain_rating")
+            or "UNKNOWN"
+        )
+        grade = _RATING_MAP.get(raw_rating.upper(), raw_rating.upper()) if raw_rating else "—"
+
+        # Confidence
+        meta = report.get("metadata", {})
+        if isinstance(meta, dict):
+            confidence = meta.get("overall_confidence", "—")
+
+        # Summary
+        summary_text = (
+            report.get("overall_domain_summary")
+            or report.get("executive_summary")
+            or report.get("summary")
+            or ""
+        )
+        if isinstance(summary_text, dict):
+            summary_text = summary_text.get("summary", str(summary_text))
+        elif not isinstance(summary_text, str):
+            summary_text = str(summary_text)
+
+        # Findings
+        for fkey in ["domain_findings", "findings", "key_findings", "critical_findings"]:
+            val = report.get(fkey, [])
+            if isinstance(val, list):
+                for item in val:
+                    if isinstance(item, dict):
+                        sub = item.get("findings", [])
+                        if sub and isinstance(sub, list):
+                            for sf in sub:
+                                if isinstance(sf, dict):
+                                    findings.append(sf)
+                        else:
+                            findings.append(item)
+                if findings:
+                    break
+
+        # Compound risks as additional findings
+        for ckey in ["combination_signals", "compound_risks", "compound_signals"]:
+            combos = report.get(ckey, [])
+            if isinstance(combos, list):
+                for combo in combos:
+                    if isinstance(combo, dict):
+                        findings.append({
+                            "title": combo.get("signal_id", "") + ": " + combo.get("combined_observation", combo.get("title", ""))[:80],
+                            "severity": combo.get("severity", "HIGH"),
+                            "description": combo.get("combined_observation", combo.get("narrative", "")),
+                        })
+
+    # Build expander label
+    if status == "completed" and grade != "—":
+        _g_emoji = _GRADE_EMOJI.get(grade, "⚪")
+        _n_crit = sum(1 for f in findings if f.get("severity", "").upper() == "CRITICAL")
+        _n_high = sum(1 for f in findings if f.get("severity", "").upper() == "HIGH")
+        _severity_hint = ""
+        if _n_crit:
+            _severity_hint += f" · 🔴 {_n_crit} critical"
+        if _n_high:
+            _severity_hint += f" · 🟠 {_n_high} high"
+        _expander_label = f"{_g_emoji} {agent_label} — {grade} · {len(findings)} findings{_severity_hint}"
+    elif status == "completed":
+        _expander_label = f"✅ {agent_label} — COMPLETE"
+    elif status == "running":
+        _expander_label = f"🔄 {agent_label} — RUNNING"
+    elif status == "failed":
+        _expander_label = f"❌ {agent_label} — FAILED"
+    else:
+        _expander_label = f"⚪ {agent_label} — PENDING"
+
+    _auto_expand = status == "completed" and any(
+        f.get("severity", "").upper() in ("CRITICAL", "HIGH") for f in findings
+    )
+
+    with st.expander(_expander_label, expanded=_auto_expand):
+
+        if status != "completed":
             st.markdown(agent_desc)
-            if completed_at:
-                st.caption(f"Completed: {completed_at}")
-
-        with col2:
-            if status == "completed":
-                st.success("✅ Complete")
-
-                # Try to load and display output summary
-                output = get_agent_output(selected_deal_id, agent_name)
-                if output:
-                    if "risk_score" in output:
-                        st.metric("Risk Score", f"{output['risk_score']}/10")
-                    if "findings" in output and output["findings"]:
-                        st.caption(f"Findings: {len(output['findings'])} items")
-
-            elif status == "running":
-                st.info("⏳ Running")
+            if status == "running":
+                st.info("⏳ Agent is currently running...")
             elif status == "failed":
-                st.error("❌ Failed")
+                st.error("❌ Agent failed. Check logs or re-run.")
             else:
-                st.write("⚪ Pending")
+                st.caption("Agent has not run yet.")
+            continue
+
+        # ── Completed agent: show full report ────────────────────────────
+        # Metrics row
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Grade", f"{_GRADE_EMOJI.get(grade, '⚪')} {grade}")
+        m2.metric("Confidence", str(confidence))
+        m3.metric("Findings", len(findings))
+        if completed_at:
+            m4.metric("Completed", completed_at[:16].replace("T", " ") if len(completed_at) > 16 else completed_at)
+        else:
+            m4.metric("Status", "✅ Complete")
+
+        # Summary
+        if summary_text:
+            st.markdown(
+                f'<div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:10px;'
+                f'padding:14px 18px;margin:8px 0;font-size:0.86rem;color:#1e293b;line-height:1.6">'
+                f'{summary_text[:800]}</div>',
+                unsafe_allow_html=True,
+            )
+
+        # Download raw JSON
+        if output:
+            _json_bytes = _json.dumps(output, indent=2, default=str).encode("utf-8")
+            st.download_button(
+                f"📥 Download {agent_name} report (JSON)",
+                data=_json_bytes,
+                file_name=f"{selected_deal['company_name']}_{agent_name}_report.json",
+                mime="application/json",
+                use_container_width=True,
+                key=f"dl_{agent_name}",
+            )
+
+        # Findings
+        if findings:
+            st.markdown(f"**Findings** ({len(findings)})")
+
+            _sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+            for f in sorted(findings, key=lambda x: _sev_order.get(x.get("severity", "LOW").upper(), 99)):
+                f_title = f.get("title", f.get("finding", f.get("observation", "Untitled")))
+                f_sev = f.get("severity", f.get("rating", f.get("risk_level", "MEDIUM"))).upper()
+                f_desc = f.get("description", f.get("detail", f.get("observation", "")))
+                f_impact = f.get("deal_implication", f.get("business_impact", f.get("impact", "")))
+                f_evidence = f.get("evidence", f.get("evidence_quote", ""))
+                sev_e = _SEV_EMOJI.get(f_sev, "⚪")
+
+                st.markdown(f"{sev_e} **{f_sev}** — {f_title}")
+                if f_desc:
+                    st.markdown(
+                        f'<div style="font-size:0.86rem;color:#334155;margin:2px 0 6px 20px">{f_desc[:500]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                if f_impact:
+                    st.markdown(f"<div style='font-size:0.84rem;margin-left:20px;color:#92400e'>💼 {f_impact}</div>", unsafe_allow_html=True)
+
+                # Render evidence — handle both legacy string and structured array
+                if f_evidence and isinstance(f_evidence, str):
+                    st.markdown(
+                        f'<div style="background:#f1f5f9;border-left:3px solid #3b82f6;border-radius:6px;'
+                        f'padding:8px 12px;margin:4px 0 8px 20px;font-size:0.84rem;font-style:italic;color:#334155">'
+                        f'"{f_evidence[:300]}"</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif f_evidence and isinstance(f_evidence, list):
+                    for ev in f_evidence:
+                        if not isinstance(ev, dict):
+                            continue
+                        ev_type = ev.get("type", "")
+                        ev_detail = ev.get("detail", "")
+                        if ev_type == "signal":
+                            st.markdown(
+                                f'<div style="background:#f1f5f9;border-left:3px solid #3b82f6;border-radius:6px;'
+                                f'padding:8px 12px;margin:4px 0 4px 20px;font-size:0.84rem">'
+                                f'📡 <strong>Signal {ev.get("signal_id", "")}</strong>: {ev_detail}</div>',
+                                unsafe_allow_html=True,
+                            )
+                        elif ev_type == "document":
+                            _doc = ev.get("source_doc", "Unknown")
+                            _excerpt = ev.get("excerpt", "")
+                            _quote = f'<br><em>"{_excerpt[:200]}"</em>' if _excerpt else ""
+                            st.markdown(
+                                f'<div style="background:#f1f5f9;border-left:3px solid #3b82f6;border-radius:6px;'
+                                f'padding:8px 12px;margin:4px 0 4px 20px;font-size:0.84rem">'
+                                f'📄 <strong>{_doc}</strong>: {ev_detail}{_quote}</div>',
+                                unsafe_allow_html=True,
+                            )
+                        elif ev_type == "prior_agent":
+                            st.markdown(
+                                f'<div style="background:#f0f9ff;border-left:3px solid #6366f1;border-radius:6px;'
+                                f'padding:8px 12px;margin:4px 0 4px 20px;font-size:0.84rem">'
+                                f'🤖 <strong>{ev.get("agent", "Agent")} → {ev.get("finding_id", "")}</strong>: {ev_detail}</div>',
+                                unsafe_allow_html=True,
+                            )
+                        elif ev_type == "missing":
+                            st.markdown(
+                                f'<div style="background:#fef2f2;border-left:3px solid #dc2626;border-radius:6px;'
+                                f'padding:8px 12px;margin:4px 0 4px 20px;font-size:0.84rem;color:#991b1b">'
+                                f'❌ <strong>Missing: {ev.get("expected", "")}</strong> — {ev_detail}</div>',
+                                unsafe_allow_html=True,
+                            )
+                        elif ev_type == "inference":
+                            st.markdown(
+                                f'<div style="background:#fffbeb;border-left:3px solid #d97706;border-radius:6px;'
+                                f'padding:8px 12px;margin:4px 0 4px 20px;font-size:0.84rem">'
+                                f'💡 <em>{ev_detail[:300]}</em></div>',
+                                unsafe_allow_html=True,
+                            )
+                st.markdown("---")
+        else:
+            st.caption("No structured findings extracted from this agent's report.")
+
+        # Chase questions generated by this agent
+        if report:
+            _agent_questions = []
+            for qkey in ["priority_questions_for_next_agents", "priority_questions_for_riley",
+                          "priority_questions_for_casey", "priority_questions_for_taylor",
+                          "priority_questions_for_drew", "follow_on_questions", "questions"]:
+                qs = report.get(qkey, [])
+                if isinstance(qs, list) and qs:
+                    _agent_questions = qs
+                    break
+
+            if _agent_questions:
+                st.markdown(f"**Questions for next agents** ({len(_agent_questions)})")
+                for i, q in enumerate(_agent_questions[:10], 1):
+                    q_text = q.get("question", str(q)) if isinstance(q, dict) else str(q)
+                    st.markdown(f"{i}. {q_text}")
+                if len(_agent_questions) > 10:
+                    st.caption(f"+ {len(_agent_questions) - 10} more — download full report for details.")

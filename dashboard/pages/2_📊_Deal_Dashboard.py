@@ -276,6 +276,37 @@ def _sev_order(severity: str) -> int:
     return {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}.get(severity, 99)
 
 
+def _normalize_finding(raw: dict) -> dict:
+    """Normalise a finding dict from any agent output format.
+
+    Handles both legacy (evidence as string) and new (evidence as structured
+    array) formats. Passes through all extra fields the dashboard can render.
+    """
+    evidence = raw.get("evidence", raw.get("evidence_quote", ""))
+    # If evidence is a string, wrap it in a single-item structured list
+    if isinstance(evidence, str) and evidence:
+        evidence = [{"type": "inference", "detail": evidence}]
+    elif not isinstance(evidence, list):
+        evidence = []
+
+    return {
+        "finding_id": raw.get("finding_id", ""),
+        "title": raw.get("title", raw.get("finding", raw.get("observation", ""))),
+        "severity": raw.get("severity", raw.get("rating", raw.get("risk_level", "MEDIUM"))),
+        "description": raw.get("description", raw.get("detail", raw.get("observation", ""))),
+        "evidence": evidence,
+        "source_signals": raw.get("source_signals", []),
+        "business_impact": raw.get("deal_implication", raw.get("business_impact", raw.get("impact", ""))),
+        "category": raw.get("category", ""),
+        "remediation": raw.get("remediation", {}),
+        "question_for_target": raw.get("question_for_target", ""),
+        "contradictions": raw.get("contradictions", []),
+        "confidence": raw.get("confidence", ""),
+        "confidence_reason": raw.get("confidence_reason", ""),
+        "benchmark_comparison": raw.get("benchmark_comparison", ""),
+    }
+
+
 def _load_domain_findings(company_name: str) -> dict | None:
     """Load agent findings — from domain_findings.json or individual agent outputs.
 
@@ -373,21 +404,9 @@ def _load_domain_findings(company_name: str) -> dict | None:
                         if sub_findings and isinstance(sub_findings, list):
                             for sf in sub_findings:
                                 if isinstance(sf, dict):
-                                    findings.append({
-                                        "title": sf.get("title", sf.get("finding", sf.get("observation", ""))),
-                                        "severity": sf.get("severity", sf.get("rating", sf.get("risk_level", "MEDIUM"))),
-                                        "description": sf.get("description", sf.get("detail", sf.get("observation", ""))),
-                                        "evidence": sf.get("evidence", sf.get("evidence_quote", "")),
-                                        "business_impact": sf.get("deal_implication", sf.get("business_impact", sf.get("impact", ""))),
-                                    })
+                                    findings.append(_normalize_finding(sf))
                         else:
-                            findings.append({
-                                "title": item.get("title", item.get("finding", item.get("observation", ""))),
-                                "severity": item.get("severity", item.get("rating", item.get("risk_level", "MEDIUM"))),
-                                "description": item.get("description", item.get("detail", item.get("observation", ""))),
-                                "evidence": item.get("evidence", item.get("evidence_quote", "")),
-                                "business_impact": item.get("deal_implication", item.get("business_impact", item.get("impact", ""))),
-                            })
+                            findings.append(_normalize_finding(item))
                 if findings:
                     break
 
@@ -396,10 +415,30 @@ def _load_domain_findings(company_name: str) -> dict | None:
             if isinstance(combos, list):
                 for combo in combos:
                     if isinstance(combo, dict):
+                        # Build evidence from contributing_findings if available
+                        contrib = combo.get("contributing_findings", [])
+                        combo_evidence = combo.get("evidence", [])
+                        if isinstance(contrib, list) and contrib:
+                            for cf in contrib:
+                                if isinstance(cf, dict):
+                                    combo_evidence.append({
+                                        "type": "prior_agent",
+                                        "agent": cf.get("agent", ""),
+                                        "finding_id": cf.get("finding_id", ""),
+                                        "detail": cf.get("detail", str(cf)),
+                                    })
+                                elif isinstance(cf, str):
+                                    combo_evidence.append({"type": "prior_agent", "detail": cf})
+                        if isinstance(combo_evidence, str):
+                            combo_evidence = [{"type": "inference", "detail": combo_evidence}]
+
                         findings.append({
-                            "title": combo.get("signal_id", "") + ": " + combo.get("combined_observation", combo.get("title", ""))[:80],
+                            "finding_id": combo.get("risk_id", combo.get("signal_id", "")),
+                            "title": combo.get("risk_title", combo.get("signal_id", "")) + ": " + combo.get("combined_observation", combo.get("title", ""))[:80],
                             "severity": combo.get("severity", "HIGH"),
-                            "description": combo.get("combined_observation", combo.get("narrative", "")),
+                            "description": combo.get("combined_observation", combo.get("narrative", combo.get("description", ""))),
+                            "evidence": combo_evidence if isinstance(combo_evidence, list) else [],
+                            "source_signals": combo.get("source_signals", []),
                             "business_impact": combo.get("deal_implication", ""),
                         })
 
@@ -1039,6 +1078,27 @@ else:
                                         f'</div>',
                                         unsafe_allow_html=True,
                                     )
+                                elif ev_type == "prior_agent":
+                                    st.markdown(
+                                        f'<div class="evidence-box" style="border-left-color:#6366f1;background:#f0f9ff">'
+                                        f'<span class="doc-name" style="color:#4338ca">🤖 {ev.get("agent", "Agent")} → {ev.get("finding_id", "")}</span>'
+                                        f'<br><span style="font-size:0.82rem;color:#475569">{ev.get("detail", "")}</span>'
+                                        f'</div>',
+                                        unsafe_allow_html=True,
+                                    )
+                                elif ev_type == "inference":
+                                    st.markdown(
+                                        f'<div class="evidence-box" style="border-left-color:#d97706;background:#fffbeb">'
+                                        f'<span class="doc-name" style="color:#92400e">💡 Inference</span>'
+                                        f'<br><span style="font-size:0.82rem;color:#475569;font-style:italic">{ev.get("detail", "")}</span>'
+                                        f'</div>',
+                                        unsafe_allow_html=True,
+                                    )
+
+                        # Source signal cross-references
+                        if finding.get("source_signals"):
+                            _sig_refs = ", ".join(f"`{s}`" for s in finding["source_signals"])
+                            st.caption(f"Source signals: {_sig_refs}")
 
                         if f_contradictions and any(f_contradictions):
                             st.markdown("**Contradictions:**")
@@ -1202,9 +1262,9 @@ with _dl1:
     if _gate1_xlsx.exists():
         with open(_gate1_xlsx, "rb") as _f:
             st.download_button(
-                "📥 Gate 1: Signal Review",
+                "📥 VDR Scan — Signal Review",
                 data=_f.read(),
-                file_name=f"{selected_company}_signal_review.xlsx",
+                file_name=f"{selected_company}_vdr_signal_review.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
@@ -1223,14 +1283,14 @@ with _dl1:
                 unsafe_allow_html=True,
             )
     else:
-        if has_vdr_data and st.button("⚙️ Generate Gate 1 Workbook", use_container_width=True, key="gen_g1"):
+        if has_vdr_data and st.button("⚙️ Generate VDR Signal Review", use_container_width=True, key="gen_g1"):
             try:
                 from tools.practitioner_review import generate_gate1_manifest, save_review_manifest
                 from tools.review_exporter import export_gate1_workbook
                 _g1_manifest = generate_gate1_manifest(brief, brief.get("deal_id", selected_company), selected_company)
                 save_review_manifest(_g1_manifest)
                 export_gate1_workbook(_g1_manifest)
-                st.success("Gate 1 workbook generated!")
+                st.success("VDR Signal Review workbook generated!")
                 st.rerun()
             except Exception as _exc:
                 st.error(f"Failed to generate: {_exc}")
@@ -1241,9 +1301,9 @@ with _dl2:
     if _gate2_xlsx.exists():
         with open(_gate2_xlsx, "rb") as _f:
             st.download_button(
-                "📥 Gate 2: Finding Review",
+                "📥 Agent Deep Dive — Finding Review",
                 data=_f.read(),
-                file_name=f"{selected_company}_finding_review.xlsx",
+                file_name=f"{selected_company}_agent_finding_review.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
@@ -1262,7 +1322,7 @@ with _dl2:
                 unsafe_allow_html=True,
             )
     else:
-        if has_agent_data and st.button("⚙️ Generate Gate 2 Workbook", use_container_width=True, key="gen_g2"):
+        if has_agent_data and st.button("⚙️ Generate Agent Finding Review", use_container_width=True, key="gen_g2"):
             try:
                 from tools.practitioner_review import generate_gate2_manifest, save_review_manifest
                 from tools.review_exporter import export_gate2_workbook
@@ -1278,7 +1338,7 @@ with _dl2:
                 )
                 save_review_manifest(_g2_manifest)
                 export_gate2_workbook(_g2_manifest)
-                st.success("Gate 2 workbook generated!")
+                st.success("Agent Finding Review workbook generated!")
                 st.rerun()
             except Exception as _exc:
                 st.error(f"Failed to generate: {_exc}")
@@ -1295,7 +1355,7 @@ with _dl3:
             _g1m = json.loads(_g1_manifest_path.read_text(encoding="utf-8"))
             _g1_urgency = _g1m.get("summary", {}).get("urgency_distribution", {})
             st.markdown(
-                f"**Gate 1:** {_g1m['summary']['total_items']} items — "
+                f"**VDR Scan:** {_g1m['summary']['total_items']} items — "
                 f"🔴 {_g1_urgency.get('CRITICAL', 0)} critical · "
                 f"🟠 {_g1_urgency.get('HIGH', 0)} high · "
                 f"🟡 {_g1_urgency.get('MEDIUM', 0)} medium"
@@ -1305,7 +1365,7 @@ with _dl3:
             _g2_urgency = _g2m.get("summary", {}).get("urgency_distribution", {})
             _g2_summary = _g2m.get("summary", {})
             st.markdown(
-                f"**Gate 2:** {_g2_summary.get('total_findings', 0)} findings, "
+                f"**Agent Deep Dive:** {_g2_summary.get('total_findings', 0)} findings, "
                 f"{_g2_summary.get('total_blind_spots', 0)} blind spots — "
                 f"🔴 {_g2_urgency.get('CRITICAL', 0)} critical · "
                 f"🟠 {_g2_urgency.get('HIGH', 0)} high"
@@ -1340,10 +1400,10 @@ if _uploaded_file is not None:
         _uploaded_file.seek(0)
         if "Signals" in _sheet_names and "Findings" not in _sheet_names:
             _auto_gate = 1
-            _auto_gate_label = "Auto-detected: **Gate 1** (Signal Review)"
+            _auto_gate_label = "Auto-detected: **VDR Scan** (Signal Review)"
         elif "Findings" in _sheet_names:
             _auto_gate = 2
-            _auto_gate_label = "Auto-detected: **Gate 2** (Finding Review)"
+            _auto_gate_label = "Auto-detected: **Agent Deep Dive** (Finding Review)"
     except Exception:
         pass
 
@@ -1352,7 +1412,7 @@ with _up_col2:
         st.markdown(_auto_gate_label)
         _gate_choice = _auto_gate
     else:
-        _gate_choice = st.radio("Gate", [1, 2], horizontal=True, key="feedback_gate")
+        _gate_choice = st.radio("Review type", [1, 2], format_func=lambda x: "VDR Scan" if x == 1 else "Agent Deep Dive", horizontal=True, key="feedback_gate")
     _practitioner_name = st.text_input("Practitioner", value="", key="feedback_practitioner", placeholder="Name")
 
 if _uploaded_file is not None:
@@ -1411,10 +1471,11 @@ if _has_recal:
     st.markdown("**Step 3 — Recalibration Insights**")
     st.caption("How the system is learning from practitioner feedback")
 
+    _recal_labels = {1: "VDR Scan", 2: "Agent Deep Dive"}
     for _gate_n, _recal_path in [(1, _deal_recal_g1), (2, _deal_recal_g2)]:
         if _recal_path.exists():
             _recal = json.loads(_recal_path.read_text(encoding="utf-8"))
-            st.markdown(f"**Gate {_gate_n} — {selected_company}**")
+            st.markdown(f"**{_recal_labels[_gate_n]} — {selected_company}**")
             _rc1, _rc2, _rc3, _rc4 = st.columns(4)
             _rc1.metric("Accuracy", f"{_recal.get('accuracy_pct', 'N/A')}%")
             _rc2.metric("Noise", f"{_recal.get('noise_rate_pct', 'N/A')}%")

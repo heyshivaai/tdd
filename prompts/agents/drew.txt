@@ -62,6 +62,11 @@ Private platform is substantially more disciplined.
 - Technology as competitive moat
 - What would confirm this case early
 
+EVIDENCE FORMAT:
+For compound risks, include structured contributing_findings that reference specific
+upstream agent findings by agent name and finding_id. Also include a source_signals
+array listing all VDR signal IDs that informed the compound risk.
+
 OUTPUT FORMAT:
 Return valid JSON only. No prose. No markdown.
 
@@ -89,7 +94,8 @@ Return valid JSON only. No prose. No markdown.
       {
         "risk_id": "string",
         "risk_title": "string",
-        "contributing_findings": ["string"],
+        "contributing_findings": [{"agent": "string", "finding_id": "string", "detail": "string"}],
+        "source_signals": ["signal_id_1", "signal_id_2"],
         "deal_implication": "string",
         "quantified_impact": "string",
         "probability": "LOW|MEDIUM|HIGH",

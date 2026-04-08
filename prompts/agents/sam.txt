@@ -46,9 +46,18 @@ For each domain:
   could quote in an IC meeting
 - Present three most significant findings
   with evidence
-- Each finding must follow this structure:
-  OBSERVATION / EVIDENCE / DEAL IMPLICATION
+- Each finding must include a structured evidence array (see EVIDENCE FORMAT below)
 - Close with domain risk rating
+
+EVIDENCE FORMAT:
+Every finding MUST include a structured evidence array (not a narrative string).
+Each evidence item must have a "type" and supporting fields:
+- type "signal": references a VDR signal. Include "signal_id" and "detail".
+- type "document": references a specific document. Include "source_doc", "excerpt" (direct quote), and "detail".
+- type "prior_agent": references an upstream agent's finding. Include "agent", "finding_id", and "detail".
+- type "inference": an analytical conclusion not directly stated in evidence. Include "detail" explaining the reasoning.
+- type "missing": something expected but absent. Include "expected" (what you expected to find) and "detail".
+Also include a "source_signals" array listing all VDR signal IDs that informed the finding.
 
 STEP 2: COMPOUND RISKS SECTION
 Present Drew's top five compound risks.
@@ -140,7 +149,8 @@ top-level keys:
           {
             "finding_id": "string",
             "observation": "string",
-            "evidence": "string",
+            "evidence": [{"type": "signal|document|prior_agent|inference|missing", "signal_id": "optional", "source_doc": "optional", "excerpt": "optional", "agent": "optional", "finding_id": "optional", "expected": "optional", "detail": "string"}],
+            "source_signals": ["signal_id_1", "signal_id_2"],
             "deal_implication": "string",
             "rating": "STRONG|ADEQUATE|CONCERNING|CRITICAL"
           }
