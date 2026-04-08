@@ -1,0 +1,4 @@
+{
+  "_note": "Mock deal data for dashboard development. Real deals are loaded from outputs/.",
+  "deals": []
+}
