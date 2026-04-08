@@ -1,9 +1,9 @@
 """
 New Scan — launch a VDR triage scan from the dashboard.
 
-Collects company name, VDR path, deal metadata, then kicks off
-run_triage() in a background thread so Streamlit stays responsive.
-Progress is streamed via the scan_registry.
+Updated to work with deal_manager. Collects VDR path and deal metadata,
+then kicks off run_triage() in a background thread. Progress is streamed
+via the scan_registry.
 """
 import os
 import sys
@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from tools.scan_registry import register_scan, update_scan, get_scan, get_all_scans
+from tools.deal_manager import list_deals, get_deal, update_deal
 
 # ── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="New Scan | TDD Platform", page_icon="🚀", layout="wide")
@@ -33,12 +34,32 @@ if VDR_ROOT.exists():
         if p.is_dir():
             vdr_choices.append(str(p))
 
-# ── Sidebar: previous scans ────────────────────────────────────────────────
+# ── Sidebar: deals and scans ────────────────────────────────────────────────
 with st.sidebar:
-    st.subheader("Previous Scans")
+    st.subheader("Deals & Scans")
+    all_deals = list_deals()
+
+    if all_deals:
+        st.caption("Active Deals")
+        for deal in all_deals[:5]:
+            deal_id = deal.get("deal_id", "unknown")
+            company = deal.get("company_name", "Unknown")
+            scan_status = deal.get("scan_status", "not_started")
+
+            status_icon = {
+                "not_started": "⚪",
+                "in_progress": "🔄",
+                "completed": "✅",
+                "failed": "❌",
+            }.get(scan_status, "❓")
+
+            st.text(f"{status_icon} {deal_id} — {company}")
+
+    st.divider()
+    st.caption("Recent Scans")
     all_scans = get_all_scans()
     if all_scans:
-        for company, rec in sorted(all_scans.items(), key=lambda x: x[1].get("started_at", ""), reverse=True):
+        for company, rec in sorted(all_scans.items(), key=lambda x: x[1].get("started_at", ""), reverse=True)[:5]:
             status = rec.get("status", "unknown")
             icon = {"running": "🔄", "completed": "✅", "failed": "❌", "stale": "⚠️"}.get(status, "❓")
             st.text(f"{icon} {company} — {status}")
@@ -49,58 +70,69 @@ with st.sidebar:
 st.markdown("---")
 st.subheader("Scan Configuration")
 
+# Deal selector
+all_deals = list_deals()
+deal_options = {d["deal_id"]: d for d in all_deals} if all_deals else {}
+
+if not deal_options:
+    st.info("No deals found. Go to **🆕 New Deal** to create one first.")
+    st.stop()
+
+selected_deal_id = st.selectbox(
+    "Select Deal",
+    options=list(deal_options.keys()),
+    help="Choose which deal to scan.",
+)
+
+selected_deal = deal_options[selected_deal_id]
+
+# Pre-fill deal metadata
 col1, col2 = st.columns(2)
 
 with col1:
-    company_name = st.text_input(
-        "Company Name",
-        placeholder="e.g. HORIZON",
-        help="Used as the output folder name and report header.",
-    )
-    deal_id = st.text_input(
-        "Deal ID",
-        placeholder="e.g. DEAL-001",
-        help="Unique identifier for this deal.",
-    )
-    sector = st.selectbox(
-        "Sector",
-        options=[
-            "healthcare-saas",
-            "fintech",
-            "enterprise-saas",
-            "cybersecurity",
-            "data-infrastructure",
-            "edtech",
-            "insurtech",
-            "logistics-tech",
-            "other",
-        ],
-        help="Drives expected-document matching and signal lenses.",
-    )
+    st.metric("Company", selected_deal["company_name"])
+    st.metric("Sector", selected_deal["sector"])
 
 with col2:
-    # VDR path: dropdown of discovered folders + manual entry
-    vdr_mode = st.radio("VDR Location", ["Select from project", "Enter path manually"], horizontal=True)
-    if vdr_mode == "Select from project" and vdr_choices:
-        vdr_path = st.selectbox("VDR Folder", options=vdr_choices)
+    st.metric("Deal Type", selected_deal["deal_type"])
+    deal_status = selected_deal.get("scan_status", "not_started")
+    st.metric("Scan Status", deal_status)
+
+st.markdown("---")
+
+# VDR path and optional overrides
+col1, col2 = st.columns(2)
+
+with col1:
+    vdr_mode = st.radio("VDR Location", ["Use deal's VDR", "Select from project", "Enter path manually"], horizontal=True)
+
+    if vdr_mode == "Use deal's VDR":
+        if selected_deal.get("vdr_path"):
+            vdr_path = selected_deal["vdr_path"]
+            st.caption(f"Using: {vdr_path}")
+        else:
+            st.warning("Deal has no VDR path configured.")
+            vdr_path = ""
+    elif vdr_mode == "Select from project" and vdr_choices:
+        vdr_path = st.selectbox("VDR Folder", options=vdr_choices, key="vdr_select")
     else:
         vdr_path = st.text_input(
             "VDR Path",
+            value=selected_deal.get("vdr_path", ""),
             placeholder=r"C:\Users\...\VDR\Company-Name",
             help="Absolute path to the VDR root folder on your machine.",
+            key="vdr_manual",
         )
-    deal_type = st.selectbox(
-        "Deal Type",
-        options=[
-            "pe-acquisition",
-            "growth-equity",
-            "carve-out",
-            "merger",
-            "recapitalization",
-            "other",
-        ],
-        help="Affects diligence weighting and expected documents.",
-    )
+
+with col2:
+    st.write("")  # Spacer
+    st.write("")  # Spacer
+    update_vdr = st.checkbox("Update deal's VDR path", value=False)
+
+company_name = selected_deal["company_name"]
+deal_id = selected_deal_id
+sector = selected_deal["sector"]
+deal_type = selected_deal["deal_type"]
 
 # ── Validation ──────────────────────────────────────────────────────────────
 ready = True
@@ -173,6 +205,10 @@ def _run_scan_thread(vdr_path: str, company: str, deal_id: str, sector: str, dea
 
 
 if st.button("🚀 Launch Scan", disabled=not ready or st.session_state.scan_running, type="primary", use_container_width=True):
+    # Update deal's VDR path if user changed it
+    if update_vdr and vdr_path:
+        update_deal(deal_id, vdr_path=vdr_path)
+
     # Register in scan_registry
     vdr_doc_count = sum(1 for _ in Path(vdr_path).rglob("*") if _.is_file()) if Path(vdr_path).exists() else 0
     register_scan(
@@ -183,6 +219,9 @@ if st.button("🚀 Launch Scan", disabled=not ready or st.session_state.scan_run
         scan_mode="full",
         total_vdr_docs=vdr_doc_count,
     )
+
+    # Update deal status
+    update_deal(deal_id, scan_status="in_progress", current_phase="vdr_scan")
 
     st.session_state.scan_running = True
     st.session_state.scan_company = company_name.upper()
