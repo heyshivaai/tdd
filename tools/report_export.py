@@ -315,11 +315,11 @@ def generate_report(company_name: str) -> Optional[io.BytesIO]:
             _get_pillar_id(s),
         )):
             row = table.add_row().cells
-            row[0].text = sig.get("signal_id", sig.get("catalog_signal_id", "—"))
-            row[1].text = PILLAR_LABELS.get(_get_pillar_id(sig), _get_pillar_id(sig))
-            row[2].text = sig.get("rating", "—").upper()
-            row[3].text = sig.get("title", sig.get("observation", ""))[:80]
-            row[4].text = sig.get("source_doc", "—")
+            row[0].text = sig.get("signal_id") or sig.get("catalog_signal_id") or "—"
+            row[1].text = PILLAR_LABELS.get(_get_pillar_id(sig), _get_pillar_id(sig)) or "—"
+            row[2].text = (sig.get("rating") or "—").upper()
+            row[3].text = (sig.get("title") or sig.get("observation") or "—")[:80]
+            row[4].text = sig.get("source_doc") or "—"
 
     # ══════════════════════════════════════════════════════════════════════
     # APPENDIX — Scan Metadata
