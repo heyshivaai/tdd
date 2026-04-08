@@ -27,16 +27,20 @@ from dotenv import load_dotenv
 from tools.completeness_checker import check_completeness
 from tools.cross_referencer import cross_reference_signals
 from tools.document_reader import extract_text, extract_text_from_pdf
+from tools.practitioner_review import generate_gate1_manifest, save_review_manifest
 from tools.report_writer import (
     write_completeness_report,
     write_feedback_shell,
     write_intelligence_brief,
     write_triage_report,
 )
+from tools.review_exporter import export_gate1_workbook
 from tools.scan_registry import update_scan, start_batch_timer, finish_batch_timer
 from tools.signal_extractor import extract_signals_from_batch
 from tools.signal_store import query_similar_patterns, store_gap, store_signals
 from tools.structure_mapper import map_vdr_structure
+from tools.quinn_version_registry import register_version
+from tools.quinn_schema_engine import load_fingerprints
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -222,6 +226,47 @@ def run_triage(
     write_triage_report(brief, OUTPUT_DIR)
     write_completeness_report(completeness, OUTPUT_DIR)
     write_feedback_shell(brief, OUTPUT_DIR, gate=1)
+
+    # ── Quinn: Register deal with current schema versions ──────────────────
+    # Tags this scan with the DRL template and signal catalog versions so Quinn
+    # can later identify which deals are affected by schema changes.
+    try:
+        fps = load_fingerprints()
+        tmpl_version = fps.get("drl_template", {}).get("version", "unknown")
+        cat_version = fps.get("signal_catalog", {}).get("version", "unknown")
+        register_version(
+            deal_id=deal_id,
+            template_version=tmpl_version,
+            catalog_version=cat_version,
+            scan_id=f"vdr-scan-{deal_id}-{brief.get('vdr_scan_timestamp', '')}",
+        )
+        brief["schema_versions"] = {
+            "template_version": tmpl_version,
+            "catalog_version": cat_version,
+        }
+        logger.info("Quinn: registered %s with template v%s, catalog v%s",
+                    deal_id, tmpl_version, cat_version)
+    except Exception as exc:
+        logger.warning("Quinn version registration failed (non-blocking): %s", exc)
+
+    # ── Gate 1: Practitioner Review artifacts ──────────────────────────────
+    # Auto-generate the review manifest (JSON for the UI) and Excel workbook
+    # (for practitioners without tool access). Both are retroactive — they
+    # don't block the pipeline, just surface what needs human eyes.
+    try:
+        gate1_manifest = generate_gate1_manifest(brief, deal_id, company_name)
+        save_review_manifest(gate1_manifest, OUTPUT_DIR)
+        export_gate1_workbook(gate1_manifest)
+        urgency_dist = gate1_manifest.get("summary", {}).get("urgency_distribution", {})
+        logger.info(
+            "Gate 1 review artifacts generated: %d items (CRITICAL: %d, HIGH: %d, MEDIUM: %d)",
+            gate1_manifest["summary"]["total_items"],
+            urgency_dist.get("CRITICAL", 0),
+            urgency_dist.get("HIGH", 0),
+            urgency_dist.get("MEDIUM", 0),
+        )
+    except Exception as exc:
+        logger.warning("Gate 1 review artifact generation failed (non-blocking): %s", exc)
 
     total_signals = sum(len(b.get("signals", [])) for b in all_batch_results)
     logger.info(

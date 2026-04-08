@@ -32,6 +32,7 @@ from agents.orchestrator import (
     run_agent,
     get_agent_by_name,
 )
+from tools.quinn_version_registry import get_version_registry
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Agent Pipeline | TDD Platform", page_icon="🤖", layout="wide")
@@ -94,6 +95,25 @@ with col4:
     st.metric("Deal Type", selected_deal["deal_type"])
 
 st.markdown("---")
+
+# ── Quinn schema version check ──────────────────────────────────────────────
+try:
+    quinn_reg = get_version_registry(selected_deal_id)
+    migration_status = quinn_reg.get("migration_status", "unknown")
+    if migration_status == "requires_reprocessing":
+        st.warning(
+            "⚠️ **Schema Change Alert:** This deal was processed with an older template/catalog version. "
+            "Consider re-running the VDR scan before running agents. "
+            f"(Template: v{quinn_reg.get('template_version', '?')}, "
+            f"Catalog: v{quinn_reg.get('catalog_version', '?')})"
+        )
+    elif migration_status == "blocked":
+        st.error(
+            "🚫 **Schema Blocked:** This deal requires manual intervention due to breaking schema changes. "
+            "Visit the Quinn Schema Guardian page for details."
+        )
+except Exception:
+    pass  # Quinn integration is non-blocking
 
 # ── Agent progress data ──────────────────────────────────────────────────────
 # get_agent_progress returns a flat dict: {agent_name: {status, ...}} or empty dict

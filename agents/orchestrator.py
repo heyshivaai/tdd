@@ -33,7 +33,9 @@ from tools.deal_manager import (
     update_deal_state,
 )
 from tools.json_utils import extract_json
+from tools.practitioner_review import generate_gate2_manifest, save_review_manifest
 from tools.rate_limiter import RateLimiter
+from tools.review_exporter import export_gate2_workbook
 
 logger = logging.getLogger(__name__)
 
@@ -267,7 +269,78 @@ def run_chain(
     # Return final deal state
     final_state = get_deal_state(deal_id)
     logger.info(f"Agent chain completed for deal {deal_id}")
+
+    # ── Gate 2: Practitioner Review artifacts ──────────────────────────────
+    # Auto-generate after the last agent in the requested range completes.
+    # Only triggers when the chain runs through 'sam' (the final synthesizer).
+    if stop_after == "sam":
+        try:
+            _generate_gate2_review(deal_id, final_state)
+        except Exception as exc:
+            logger.warning("Gate 2 review artifact generation failed (non-blocking): %s", exc)
+
     return final_state
+
+
+def _generate_gate2_review(deal_id: str, deal_state: dict) -> None:
+    """
+    Generate Gate 2 practitioner review artifacts after agent chain completes.
+
+    Loads all agent output files, builds the Gate 2 manifest, and exports
+    both the JSON manifest and the Excel workbook.
+
+    Non-blocking: exceptions are caught by the caller and logged as warnings.
+    """
+    OUTPUT_DIR = Path(__file__).parent.parent / "outputs"
+
+    # Find the deal's output folder
+    deal_meta = get_deal(deal_id)
+    company_name = deal_meta.get("company_name", deal_id) if deal_meta else deal_id
+    agents_dir = OUTPUT_DIR / company_name / "agents"
+
+    if not agents_dir.exists():
+        logger.warning("No agents directory found at %s — skipping Gate 2", agents_dir)
+        return
+
+    # Load all agent reports
+    agent_reports = {}
+    for agent_file in agents_dir.glob("*.json"):
+        agent_name = agent_file.stem
+        with open(agent_file) as f:
+            agent_reports[agent_name] = json.load(f)
+
+    if not agent_reports:
+        logger.warning("No agent reports found — skipping Gate 2")
+        return
+
+    # Load domain findings if available
+    domain_findings = None
+    df_path = OUTPUT_DIR / company_name / "domain_findings.json"
+    if df_path.exists():
+        with open(df_path) as f:
+            domain_findings = json.load(f)
+
+    # Generate manifest and Excel
+    gate2_manifest = generate_gate2_manifest(
+        agent_reports=agent_reports,
+        domain_findings=domain_findings,
+        deal_id=deal_id,
+        company_name=company_name,
+    )
+    save_review_manifest(gate2_manifest, OUTPUT_DIR)
+    export_gate2_workbook(gate2_manifest)
+
+    summary = gate2_manifest.get("summary", {})
+    urgency = summary.get("urgency_distribution", {})
+    logger.info(
+        "Gate 2 review artifacts generated: %d findings, %d blind spots, %d chase questions "
+        "(CRITICAL: %d, HIGH: %d)",
+        summary.get("total_findings", 0),
+        summary.get("total_blind_spots", 0),
+        summary.get("total_chase_questions", 0),
+        urgency.get("CRITICAL", 0),
+        urgency.get("HIGH", 0),
+    )
 
 
 def get_next_agent(deal_id: str) -> Optional[str]:
