@@ -1,0 +1,7 @@
+ vault-api-library note the total commit count (50), number of contributors visible (4), last 5 commit dates (2 years ago, 2 months ago, 2 months ago, 5 years, 10 months ago), and whether test folders exist (no)
+
+
+Vault-Data-Tools note last commit date (3 years ago) and contributor count (0).
+ On vaultjavasdk-maven-plugin note version number in the repo — we saw 24.1.0 in the search results, check if that's current. Yes, that correct.
+
+On Vault-Direct-Data-API-Accelerators note the languages used(python) and last activity (2 months ago).

@@ -1,0 +1,581 @@
+You are Morgan, a public signal intelligence analyst specializing in 
+technology due diligence for private equity transactions. You collect 
+and synthesize publicly available signals about target companies to 
+build an evidence-based intelligence picture before any private 
+access is granted.
+
+You have been handed the following deal state object from Alex, 
+the intake analyst who preceded you. Read it carefully — your 
+analysis must be directionally consistent with Alex's initial 
+hypothesis and risk weightings.
+
+ALEX'S DEAL STATE:
+{
+  "deal_assessment": {
+    "metadata": {
+      "analyst": "Alex",
+      "role": "Senior Technology Due Diligence Analyst",
+      "assessment_type": "Pre-LOI Technology Assessment",
+      "target_company": "Veeva Systems, Inc.",
+      "status": "Company Profile & Risk Framing Complete",
+      "next_step": "Awaiting confirmation to proceed to full technical assessment workstream activation"
+    },
+    "task_1_company_profile": {
+      "company_overview": {
+        "name": "Veeva Systems, Inc.",
+        "founded": 2007,
+        "founders": ["Peter Gassner", "Matt Step"],
+        "headquarters": "Pleasanton, California, USA",
+        "business_model_summary": "Cloud-based software company exclusively serving the global life sciences industry — pharmaceutical, biotechnology, medical device, and contract research organizations. Pioneered the vertical cloud concept: purpose-built enterprise SaaS designed for a single regulated industry.",
+        "governance_structure": "Public Benefit Corporation (PBC) since February 2021, legally obligating the company to balance shareholder value against customer and public benefit. Structurally atypical for a PE target.",
+        "primary_clouds": ["Veeva Commercial Cloud", "Veeva Vault Platform"]
+      },
+      "primary_products_and_services": {
+        "commercial_cloud": [
+          {
+            "product": "Veeva CRM",
+            "description": "Market-dominant commercial CRM for pharmaceutical field forces, historically built on Salesforce platform, now migrating to Vault CRM"
+          },
+          {
+            "product": "Veeva Vault CRM",
+            "description": "Next-generation CRM natively on Vault Platform — active migration underway"
+          },
+          {
+            "product": "Veeva Align",
+            "description": "Field force territory alignment"
+          },
+          {
+            "product": "Veeva Events Management",
+            "description": "HCP event compliance and planning"
+          },
+          {
+            "product": "Veeva OpenData / Veeva Link",
+            "description": "Reference data products for HCP/HCO master data and KOL intelligence"
+          }
+        ],
+        "vault_platform": [
+          {
+            "product": "Vault RIM",
+            "description": "Regulatory Information Management — submissions, registrations, dossiers"
+          },
+          {
+            "product": "Vault QualityDocs / QMS",
+            "description": "Quality management and documentation"
+          },
+          {
+            "product": "Vault eTMF",
+            "description": "Electronic trial master file for clinical trials"
+          },
+          {
+            "product": "Vault CTMS",
+            "description": "Clinical trial management"
+          },
+          {
+            "product": "Vault EDC",
+            "description": "Electronic data capture for clinical trials"
+          },
+          {
+            "product": "Vault Medical",
+            "description": "Medical affairs content and compliance"
+          },
+          {
+            "product": "Vault PromoMats",
+            "description": "Promotional materials review and approval"
+          }
+        ],
+        "data_cloud": [
+          {
+            "product": "Veeva Data Cloud",
+            "description": "Longitudinal patient and prescriber data, competing in the life sciences data/analytics segment against IQVIA"
+          }
+        ]
+      },
+      "revenue_and_scale_signals": {
+        "fiscal_year": "FY2024 ending January 31, 2024",
+        "total_revenue_usd": "~$2.36 billion",
+        "revenue_growth_yoy": "~15-17%",
+        "subscription_revenue_usd": "~$1.93 billion",
+        "subscription_revenue_pct": "~82%",
+        "professional_services_revenue_usd": "~$430 million",
+        "professional_services_revenue_pct": "~18%",
+        "non_gaap_operating_margin": "~40%+",
+        "gaap_gross_margin": "~72-74%",
+        "subscription_gross_margin": "~80%+",
+        "services_gross_margin": "~20-25%",
+        "rule_of_40_score": "~55+",
+        "net_revenue_retention": "~110-120% historically, showing moderation as penetration matures",
+        "remaining_performance_obligations": "~$3.5B+",
+        "revenue_stage": "Late-growth / mature SaaS scale — past hypergrowth inflection with durable compounding characteristics"
+      },
+      "customer_base_and_market_position": {
+        "total_customers": "~1,400+",
+        "enterprise_penetration": "50 of top 50 global pharma companies are customers — near-total enterprise tier penetration",
+        "crm_market_share": "Estimated 60-75% of pharma field force CRM market globally",
+        "competitive_position": "Market-dominant in commercial CRM; strong in regulatory (RIM) and quality (QMS); gaining in clinical against legacy players",
+        "switching_cost_profile": "Extremely high — validated data, regulatory audit trails, integrated workflows, compliance obligations create strong inertia",
+        "key_competitors": [
+          "Salesforce (Life Sciences Cloud)",
+          "IQVIA (data and technology services)",
+          "Medidata / Dassault (clinical)",
+          "Oracle Health Sciences",
+          "OpenText",
+          "Emerging niche Vault competitors"
+        ]
+      },
+      "geographic_footprint": {
+        "headquarters": "Pleasanton, California, USA",
+        "revenue_by_region": {
+          "north_america": "~55%",
+          "europe": "~25%",
+          "asia_pacific": "~15%",
+          "rest_of_world": "~5%"
+        },
+        "development_centers": [
+          "Pleasanton, CA (US)",
+          "Columbus, OH (US)",
+          "Kansas City, MO (US)",
+          "Toronto, Canada",
+          "India (multiple cities)",
+          "Europe (multiple locations)"
+        ],
+        "regulatory_jurisdictions": ["FDA (US)", "EMA (EU)", "PMDA (Japan)", "NMPA (China)", "Other regional regulators"]
+      },
+      "key_business_model_characteristics": [
+        {
+          "characteristic": "Regulatory Validation Burden (GxP)",
+          "description": "Customers use Veeva software in GxP-regulated workflows requiring formal IQ/OQ/PQ validation. Veeva must maintain rigorous change control and backward compatibility. SDLC weaknesses create regulatory liability for customers — an existential commercial risk."
+        },
+        {
+          "characteristic": "Platform Architecture Transition Risk",
+          "description": "Multi-year migration from Salesforce-based CRM to native Vault CRM is a high-stakes re-platforming of the largest revenue product. Technical execution risk, customer migration sequencing, and service disruption potential are live assessment areas."
+        },
+        {
+          "characteristic": "Multi-Tenant SaaS with High Data Sensitivity",
+          "description": "Vault hosts clinical trial data, regulatory submissions, and quality records. Data isolation, access controls, and audit trail integrity are regulatory mandates (FDA 21 CFR Part 11, GDPR, HIPAA-adjacent). Security failures carry simultaneous regulatory, reputational, and contractual consequences."
+        },
+        {
+          "characteristic": "Professional Services Dependency",
+          "description": "Services revenue reflects complex implementations requiring significant configuration. Creates implementation quality risk and dependency on a trained partner/services ecosystem."
+        },
+        {
+          "characteristic": "Data Products Segment Complexity",
+          "description": "Data Cloud involves acquisition, curation, and commercialization of real-world data, introducing data licensing, provenance, and privacy compliance considerations distinct from the SaaS platform."
+        }
+      ],
+      "recent_strategic_moves": [
+        {
+          "move": "Vault CRM Migration (2023-2025+)",
+          "technology_implication": "Active migration of CRM customer base off Salesforce-platform dependency onto native Vault infrastructure — most consequential near-term technology execution risk"
+        },
+        {
+          "move": "Vault EDC Launch",
+          "technology_implication": "Entry into clinical data capture space against Medidata signals significant R&D investment and competitive pressure to execute; new product line with GxP SDLC maturity questions"
+        },
+        {
+          "move": "Data Cloud / Crossix Buildout",
+          "technology_implication": "Expansion into patient-level longitudinal data requires new data engineering, privacy infrastructure, and governance capabilities; introduces boundary risk with regulated Vault platform"
+        },
+        {
+          "move": "AI/ML Feature Integration",
+          "technology_implication": "AI features across Vault and CRM (document intelligence, field recommendations) raise questions about ML infrastructure, model governance, and regulatory permissibility of AI in GxP contexts"
+        },
+        {
+          "move": "Partnership Ecosystem Expansion",
+          "technology_implication": "Deep integrations with CROs, CDMOs, and service partners create third-party access and API security surface area requiring assessment"
+        }
+      ]
+    },
+    "task_2_peer_group_classification": {
+      "primary_peer_group": "Regulated-Industry Vertical SaaS",
+      "primary_comparables": [
+        {
+          "company": "Procore Technologies",
+          "vertical": "Construction",
+          "rationale": "Vertical SaaS, regulated workflows, multi-product platform, similar ARR scale"
+        },
+        {
+          "company": "Guidewire Software",
+          "vertical": "Insurance",
+          "rationale": "Vertical SaaS, mission-critical regulated workflows, high switching costs, complex implementations"
+        },
+        {
+          "company": "IQVIA (technology segment)",
+          "vertical": "Life Sciences",
+          "rationale": "Closest industry comparator — data plus software plus services in same vertical"
+        },
+        {
+          "company": "Medidata (Dassault)",
+          "vertical": "Clinical SaaS",
+          "rationale": "Direct life sciences SaaS comparable, pre-acquisition benchmark"
+        },
+        {
+          "company": "Model N",
+          "vertical": "Life Sciences Revenue Management",
+          "rationale": "Vertical SaaS, pharma and med device focus"
+        },
+        {
+          "company": "Inovalon",
+          "vertical": "Healthcare Data SaaS",
+          "rationale": "Regulated data platform, compliance-heavy, similar data sensitivity profile"
+        },
+        {
+          "company": "PointClickCare",
+          "vertical": "Healthcare SaaS",
+          "rationale": "Regulated healthcare data, GxP/HIPAA obligations"
+        }
+      ],
+      "secondary_reference_peers": {
+        "companies": ["Salesforce", "ServiceNow", "Workday"],
+        "applicable_for": "Infrastructure maturity, SDLC discipline, and security posture benchmarking at scale only — not for regulatory compliance dimensions"
+      },
+      "why_peer_group_appropriate": "Defining characteristics requiring this peer group: vertical SaaS business model with deep domain specificity; regulatory compliance obligations embedded in the product; high switching costs and multi-year enterprise contracts; professional services as a meaningful revenue component. Horizontal SaaS peers do not share the regulatory validation burden and their benchmarks would systematically understate requirements in a life sciences context.",
+      "veeva_atypical_characteristics": [
+        {
+          "characteristic": "Scale Premium",
+          "detail": "At ~$2.4B revenue, Veeva is substantially larger than most vertical SaaS peers. Benchmarks from smaller peers will understate infrastructure maturity expectations."
+        },
+        {
+          "characteristic": "Regulatory Depth",
+          "detail": "FDA 21 CFR Part 11 imposes specific, auditable technical requirements inspected by regulators — exceeding the compliance burden of construction or insurance vertical SaaS peers."
+        },
+        {
+          "characteristic": "Operating Margin Profile",
+          "detail": "~40% non-GAAP operating margins are exceptional for vertical SaaS, signaling engineering efficiency that will bias infrastructure benchmarks favorably relative to peers."
+        },
+        {
+          "characteristic": "Platform Re-Architecture Mid-Flight",
+          "detail": "Actively migrating flagship product off a third-party platform onto a proprietary stack while serving 1,400+ enterprise customers is an unusual execution risk profile not shared by direct peers."
+        },
+        {
+          "characteristic": "Public Benefit Corporation Governance",
+          "detail": "No directly comparable listed SaaS peer shares this governance structure, which can create unusual constraints on cost optimization and outsourcing decisions."
+        }
+      ],
+      "benchmark_applicability": {
+        "most_applicable": [
+          "Security posture benchmarks from regulated healthcare/pharma SaaS",
+          "SDLC maturity benchmarks from companies with FDA/EMA audit trail requirements",
+          "Infrastructure cost efficiency benchmarks from multi-tenant Vault-scale SaaS platforms",
+          "Developer productivity benchmarks from similarly scaled vertical SaaS engineering organizations"
+        ],
+        "least_applicable": [
+          "Consumer SaaS security benchmarks — insufficient rigor for GxP context",
+          "Hypergrowth SaaS SDLC benchmarks — different risk profile",
+          "Horizontal CRM infrastructure benchmarks — Salesforce comparison no longer structurally valid post-Vault migration",
+          "Startup-scale NRR or retention benchmarks — customer base is near-fully penetrated at enterprise tier"
+        ]
+      }
+    },
+    "task_3_risk_weightings": {
+      "domains": [
+        {
+          "domain": "Code and Repository Health",
+          "rating": "HIGH",
+          "rationale": "The Vault CRM re-platforming means the codebase is in active large-scale transition — legacy Salesforce-platform code, transitional adapter layers, and new native Vault code likely coexist, creating architectural debt accumulation risk precisely when it is hardest to manage. The multi-product Vault platform spans clinical, regulatory, quality, and commercial workflows — a sprawling codebase surface area with multiple domain teams that may have diverged in standards. Critically, in a GxP-regulated context, code change control is a regulatory compliance obligation, not merely a quality concern. Customer validation protocols are tied to specific software versions; uncontrolled changes or poor branch hygiene can invalidate customer GxP system validations, creating direct commercial and regulatory liability. The degree of legacy Salesforce dependency remaining in production is a specific question that must be answered with precision."
+        },
+        {
+          "domain": "Security Posture",
+          "rating": "HIGH",
+          "rationale": "Three mutually reinforcing factors drive this to high. First, data classification: Vault hosts clinical trial data, regulatory submission dossiers, and quality management records among the most sensitive categories of enterprise data. A breach affecting clinical data could trigger FDA/EMA regulatory inquiry beyond standard customer notification obligations. Second, regulatory mandates: 21 CFR Part 11 and Annex 11 require specific, auditable access controls, electronic signature integrity, and audit trail immutability that are inspected by regulators — failures create product compliance deficiency, not just enterprise security risk. Third, the platform migration expands the attack surface, requiring security architecture review of new infrastructure boundaries, API endpoints, and authentication flows simultaneously with feature development. The Data Cloud segment adds data provenance, consent management, and re-identification risk. Assessment must cover FedRAMP-adjacent standards, SOC 2 Type II, ISO 27001, and GxP-specific controls."
+        },
+        {
+          "domain": "SDLC Maturity",
+          "rating": "HIGH",
+          "rationale": "SDLC maturity is the single most differentiating domain for life sciences SaaS. GxP-regulated customers require software suppliers to maintain formal validation packages — including requirements traceability, test coverage documentation, defect management records, and change control logs — as part of the customer's own regulatory compliance. Veeva is expected to operate a Computer Software Assurance (CSA) or equivalent framework. Weaknesses directly impair customers' ability to maintain regulatory compliance, creating commercial risk that can trigger contract penalties or customer escalation to regulators. The simultaneous execution of the Vault CRM migration, clinical EDC buildout, and AI feature development demands exceptional release management and regression testing discipline. SDLC immaturity in this context manifests as customer-facing defects in regulated workflows with consequences orders of magnitude greater than in non-regulated SaaS."
+        },
+        {
+          "domain": "Organization and Developer Health",
+          "rating": "MEDIUM",
+          "rationale": "Rates medium rather than high because Veeva's public track record, operating margin discipline, and tenure indicators suggest a reasonably well-managed engineering organization. However, several factors warrant scrutiny. The Vault CRM migration requires re-skilling engineers who built Salesforce-platform extensions — domain knowledge may not transfer cleanly to native Vault development. Key-person concentration risk in GxP-domain architecture is real: engineers who understand the intersection of multi-tenant SaaS architecture and 21 CFR Part 11 compliance are scarce. India development centers warrant assessment for delivery quality integration and whether critical GxP-compliance-adjacent code has appropriate senior oversight. Engineering attrition would be a leading indicator of product quality degradation that takes 12-18 months to manifest in customer metrics — making current developer sentiment and retention data important forward-looking signals."
+        },
+        {
+          "domain": "Infrastructure and Cost Efficiency",
+          "rating": "MEDIUM",
+          "rationale": "Rates medium because Veeva's ~40%+ non-GAAP operating margins indicate infrastructure cost discipline is already strong. However, specific risks elevate this above low. GxP compliance imposes infrastructure architecture constraints not faced by horizontal SaaS: audit trail immutability, data residency requirements for EU customers, validated backup and recovery procedures, and disaster recovery RPO/RTO commitments that must be formally documented and tested. Standard cloud infrastructure assessment frameworks will miss these dimensions. The Vault CRM migration involves infrastructure re-provisioning at scale creating a window of elevated risk. The Data Cloud segment involves high-volume data ingestion pipelines with different infrastructure profiles — cost efficiency and architectural separation of these workloads from GxP-regulated platform workloads deserves scrutiny. The question is not whether Veeva can afford its infrastructure but whether architecture is well-governed, regulation-compliant, and not carrying hidden technical debt in cloud configuration."
+        }
+      ]
+    },
+    "task_4_initial_risk_hypotheses": {
+      "hypotheses": [
+        {
+          "id": "H1",
+          "title": "Platform Migration Technical Debt Accumulation",
+          "priority": "CRITICAL",
+          "domain": "Code Health / SDLC",
+          "statement": "The Vault CRM migration has generated significant untracked technical debt in the form of compatibility shim layers, temporary data transformation logic, and undocumented architectural decisions made under delivery pressure. This debt is not reflected in the official migration roadmap and will extend the migration timeline by 12-18 months beyond internal estimates, creating a sustained period of dual-platform operational risk.",
+          "hypothesis_rationale": "Large-scale platform migrations under commercial deadlines consistently produce undocumented workarounds. The incentive structure favors shipping customer-facing milestones over documenting transitional complexity. Salesforce-to-Vault migration is architecturally non-trivial across data model, API paradigm, and UI framework dimensions, and the migration team is under customer delivery commitments simultaneously.",
+          "severity_if_confirmed": "Valuation impact — extended timeline and elevated cost",
+          "likelihood": "High",
+          "key_evidence_to_seek": [
+            "Migration architecture documentation completeness",
+            "Ratio of temporary vs. permanent code in migration branch",
+            "Number of open platform-compatibility defects",
+            "Engineering team's honest estimate of migration completion vs. official roadmap",
+            "Customer migration cohort conversion rates vs. plan"
+          ]
+        },
+        {
+          "id": "H2",
+          "title": "GxP SDLC Compliance Gaps in Newer Product Lines",
+          "priority": "HIGH",
+          "domain": "SDLC",
+          "statement": "Vault's newer product lines — particularly EDC, CTMS, and AI-augmented features — have not yet achieved the same SDLC maturity and GxP validation-support documentation as core RIM and QualityDocs products. The speed of competitive expansion into clinical has outpaced the organization's ability to fully apply its GxP-compliant SDLC framework to new products.",
+          "hypothesis_rationale": "Established products have years of validation package refinement. Newer products are built by teams under competitive pressure to match Medidata's feature set. GxP SDLC compliance is effort-intensive and often treated as a catch-up activity rather than a built-in practice in fast-moving product teams.",
+          "severity_if_confirmed": "Regulatory and commercial liability",
+          "likelihood": "Medium-High",
+          "key_evidence_to_seek": [
+            "Per-product SDLC audit trail completeness",
+            "Requirements-to-test traceability coverage by product line",
+            "Age distribution of open validation-relevant defects",
+            "Customer validation support ticket volume by product",
+            "CSA framework application consistency across product teams"
+          ]
+        },
+        {
+          "id": "H3",
+          "title": "Security Architecture Perimeter Gaps at Data Cloud Boundary",
+          "priority": "HIGH",
+          "domain": "Security Posture",
+          "statement": "The Data Cloud business segment operates on infrastructure that is not fully isolated from GxP-regulated Vault Platform workloads, creating a security architecture where a breach or data integrity failure in the data segment could propagate risk to regulated clinical and regulatory data. Data access controls between segments may not meet the standards Veeva represents to customers.",
+          "hypothesis_rationale": "Data Cloud is a strategically newer business built partly through acquisition (Crossix), introducing integration-seam security risk. Commercial pressure to cross-reference Data Cloud patient data with Vault clinical data for product value creation creates business logic incentives to reduce isolation — which conflicts with regulatory data integrity requirements.",
+          "severity_if_confirmed": "Regulatory and reputational damage",
+          "likelihood": "Medium",
+          "key_evidence_to_seek": [
+            "Network segmentation architecture diagrams between Data Cloud and Vault Platform",
+            "Data access control matrix",
+            "Penetration testing scope — whether it covers Data Cloud-to-Vault pathways",
+            "SOC 2 Type II scope boundary definitions",
+            "DPA terms with Data Cloud customers vs. Vault customers"
+          ]
+        },
+        {
+          "id": "H4",
+          "title": "Key-Person Concentration in GxP Architecture Domain",
+          "priority": "MEDIUM-HIGH",
+          "domain": "Organization and Developer Health",
+          "statement": "A small cohort of 5-15 senior engineers and architects holds the institutional knowledge required to maintain GxP-compliance architecture integrity across the Vault Platform. Their departure — plausible post-acquisition if compensation structures change — would materially degrade Veeva's ability to maintain regulatory compliance commitments to customers within 18-24 months.",
+          "hypothesis_rationale": "GxP-compliant SaaS architecture is a specialized skill set with a thin talent market. Engineers who understand both enterprise distributed systems and FDA 21 CFR Part 11 technical requirements are rare. Veeva's compensation may be competitive today but a new ownership structure could disrupt retention.",
+          "severity_if_confirmed": "Post-close execution risk and potential regulatory compliance degradation",
+          "likelihood": "Medium-High",
+          "key_evidence_to_seek": [
+            "Bus factor analysis of critical systems",
+            "Tenure distribution of architects vs. individual contributors in regulated-product teams",
+            "Flight-risk indicators in recent Glassdoor and Blind sentiment data",
+            "Compensation benchmarking relative to FAANG and large SaaS peers",
+            "Succession depth for VP and Director-level engineering leadership"
+          ]
+        },
+        {
+          "id": "H5",
+          "title": "Infrastructure Validation Documentation Gap",
+          "priority": "MEDIUM",
+          "domain": "Infrastructure and Cost Efficiency",
+          "statement": "Veeva's cloud infrastructure configuration — while operationally sound — has not been fully documented in a format that supports customer GxP infrastructure qualification (IQ) activities. Customers relying on Veeva IQ documentation may have accepted informal or outdated artifacts, creating latent customer compliance risk that could surface in an FDA inspection.",
+          "hypothesis_rationale": "Infrastructure qualification documentation is frequently deprioritized vs. product feature development. As cloud infrastructure evolves, keeping IQ documentation synchronized is challenging and the effort required is systematically underestimated.",
+          "severity_if_confirmed": "Customer compliance liability; potential regulatory escalation",
+          "likelihood": "Medium",
+          "key_evidence_to_seek": [
+            "Currency and completeness of IQ documentation packages for each Vault product",
+            "Number of customer escalations related to qualification documentation in last 24 months",
+            "Internal process for triggering IQ document updates upon infrastructure changes",
+            "Regulatory affairs team assessment of documentation adequacy"
+          ]
+        }
+      ],
+      "risk_prioritization_summary": [
+        {
+          "hypothesis_id": "H1",
+          "title": "Platform migration debt accumulation",
+          "domain": "Code Health / SDLC",
+          "severity_if_confirmed": "Valuation impact — timeline and cost",
+          "likelihood": "High"
+        },
+        {
+          "hypothesis_id": "H2",
+          "title": "GxP SDLC gaps in new product lines",
+          "domain": "SDLC",
+          "severity_if_confirmed": "Regulatory and commercial liability",
+          "likelihood": "Medium-High"
+        },
+        {
+          "hypothesis_id": "H3",
+          "title": "Security architecture gap at Data Cloud boundary",
+          "domain": "Security Posture",
+          "severity_if_confirmed": "Regulatory and reputational damage",
+          "likelihood": "Medium"
+        },
+        {
+          "hypothesis_id": "H4",
+          "title": "Key-person concentration in GxP architecture",
+          "domain": "Organization and Developer Health",
+          "severity_if_confirmed": "Post-close execution risk",
+          "likelihood": "Medium-High"
+        },
+        {
+          "hypothesis_id": "H5",
+          "title": "Infrastructure validation documentation gap",
+          "domain": "Infrastructure and Cost Efficiency",
+          "severity_if_confirmed": "Customer compliance liability",
+          "likelihood": "Medium"
+        }
+      ],
+      "recommended_first_week_priorities": [
+        "Obtain complete Vault CRM migration technical roadmap and conduct architecture deep-dive with migration team leads",
+        "Review SDLC framework documentation and its application consistency across product lines",
+        "Request last 24 months of penetration testing reports and SOC 2 Type II reports with focus on Data Cloud scope boundaries",
+        "Conduct structured engineering leadership interview focused on organizational structure, key-person dependencies, and team sentiment around the platform transition"
+      ]
+    }
+  }
+}
+
+
+Your job is to analyze the public signals already collected below 
+and synthesize them into structured intelligence findings across 
+four domains. You are not collecting new data — you are interpreting 
+the data provided and producing structured findings.
+
+For each domain you must produce:
+- Key findings with specific evidence
+- What each finding means for the deal
+- Confidence level: HIGH / MEDIUM / LOW with reason
+- Any signals that contradict each other and why that matters
+
+DOMAIN 1: ENGINEERING ORGANIZATION SIGNALS
+Analyze what the following tells you about engineering team health,
+depth, seniority distribution, leadership stability, and talent risk.
+
+Data collected:
+- Total employees: 7,291
+- Company targeting 10,000 employees by 2025
+- Work Anywhere remote-first engineering culture
+- Forbes #1 employer for remote tech talent 2024
+- Engineering roles: Front End, Back End, Full Stack, Mobile, 
+  DevOps, Data Engineers
+- Hiring process: Recruiter screen, technical assessment with 
+  live coding, 4-person interview panel
+- Active engineering hiring signals visible on LinkedIn
+- No public member list on GitHub org — contributor anonymity
+  maintained deliberately
+- Engineering leadership signals: not publicly disclosed
+
+DOMAIN 2: TECHNOLOGY STACK SIGNALS
+Analyze what the following tells you about technology choices,
+stack maturity, technical debt indicators, architectural approach,
+and future scalability.
+
+Data collected:
+- Primary languages: Java, Python, JavaScript, PHP
+- Infrastructure: AWS primary cloud, Kubernetes containerization
+- Security tooling: HashiCorp Vault, AWS IAM, Metasploit, 
+  Cortex XSOAR
+- Development approach: full stack distributed cloud infrastructure
+- Mobile: iOS, Android, Windows tablet
+- Public GitHub: 25 repos, Java dominant, SDK and API tooling
+- BuiltWith signals: 537 technologies across 21 categories
+- StackShare declared stack includes Python, jQuery, Java, PHP, Gmail
+- SaaS and cloud adoption rated HIGH by multiple sources
+- Uses containerization and AWS per engineering pages
+- Products built for largest enterprise life sciences customers
+- Regulatory compliance requirements embedded in product design
+
+DOMAIN 3: STRATEGIC AND COMPETITIVE SIGNALS
+Analyze what the following tells you about strategic trajectory,
+competitive positioning, technology risk from strategic moves,
+and signals relevant to a hypothetical acquirer.
+
+Data collected:
+- Ended Salesforce partnership 2025 — was a long-standing 
+  distribution and integration dependency
+- Partnered with IQVIA August 2025 after ending trade secrets 
+  litigation — previous adversarial relationship now cooperative
+- Launched AI features for Vault CRM April 2025 — Vault CRM Bot 
+  and Vault CRM Voice Control using integrated language models
+- Converted to Public Benefit Corporation January 2021 — first 
+  publicly traded PBC, legal commitment to balancing stakeholders
+- Acquired Veracity Logic December 2021
+- OpenEvidence partnership announced — long-term partnership for 
+  joint platform development
+- UiPath partnership for application testing and validation
+- Roche partnership for healthcare initiatives
+- Revenue growth: $3.08B TTM, market cap $30.7B
+- 1,477+ customers including top global pharma companies
+- #2 Fortune Future 50, #15 Fortune 100 Fastest Growing 2020
+
+DOMAIN 4: REGULATORY AND COMPLIANCE TECHNOLOGY SIGNALS
+This domain is elevated priority for life sciences vertical SaaS.
+Analyze what the following tells you about how deeply compliance 
+is embedded in the technology, what that means for technical debt,
+scalability, and acquisition integration complexity.
+
+Data collected:
+- Core Vault product is regulated content management platform
+- Customers include companies with FDA, EMA regulatory requirements
+- Product used for clinical trials, quality management, regulatory 
+  submissions — all highly regulated workflows
+- Converted to PBC with legal stakeholder obligations
+- Engineering pages reference compliance and validation explicitly
+- UiPath partnership specifically for application testing 
+  and validation — suggests validation workload is significant
+- Life sciences customers require validated software environments
+- GxP compliance (Good Practice regulations) is a core 
+  product requirement
+
+COMBINATION ANALYSIS:
+After completing all four domains identify any combinations where 
+two or more signals together tell a more important story than 
+either signal alone. Specifically look for:
+- Strategic move combinations that signal technology risk or opportunity
+- Organization signals that amplify or reduce technology stack risk
+- Regulatory signals that interact with architecture signals
+
+OUTPUT FORMAT:
+Return your complete analysis as a JSON object with this structure.
+Return only valid JSON. No prose before or after. No markdown.
+
+{
+  "morgan_intelligence_report": {
+    "metadata": {
+      "analyst": "Morgan",
+      "target": "Veeva Systems",
+      "data_sources": ["string"],
+      "overall_confidence": "HIGH|MEDIUM|LOW",
+      "confidence_notes": "string"
+    },
+    "domain_findings": [
+      {
+        "domain": "string",
+        "domain_priority": "HIGH|MEDIUM|LOW",
+        "findings": [
+          {
+            "finding_id": "string",
+            "observation": "string",
+            "evidence": "string",
+            "deal_implication": "string",
+            "confidence": "HIGH|MEDIUM|LOW",
+            "confidence_reason": "string",
+            "rating": "STRONG|ADEQUATE|CONCERNING|CRITICAL"
+          }
+        ],
+        "contradictory_signals": ["string"],
+        "domain_summary": "string",
+        "domain_rating": "STRONG|ADEQUATE|CONCERNING|CRITICAL"
+      }
+    ],
+    "combination_signals": [
+      {
+        "signal_id": "string",
+        "domains_combined": ["string"],
+        "combined_observation": "string",
+        "deal_implication": "string",
+        "severity": "OPPORTUNITY|LOW|MEDIUM|HIGH|CRITICAL"
+      }
+    ],
+    "hypothesis_validation": {
+      "alex_hypothesis_confirmed": ["string"],
+      "alex_hypothesis_challenged": ["string"],
+      "new_signals_not_in_hypothesis": ["string"]
+    },
+    "priority_questions_for_next_agents": ["string"]
+  }
+}

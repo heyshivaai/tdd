@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Selective Scan UI — VDR Triage</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; padding: 24px; max-width: 960px; margin: 0 auto; }
+
+  .hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); border-radius: 14px; padding: 28px 32px; margin-bottom: 24px; color: white; }
+  .hero h1 { font-size: 1.7rem; font-weight: 800; margin: 0 0 4px; }
+  .hero p { color: #94a3b8; font-size: 0.9rem; margin: 0; }
+
+  .section-title { font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 24px 0 6px; }
+  .section-sub { font-size: 0.82rem; color: #64748b; margin-bottom: 14px; line-height: 1.5; }
+
+  /* KPI strip */
+  .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; text-align: center; }
+  .kpi .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 600; }
+  .kpi .value { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin: 4px 0 2px; }
+  .kpi .delta { font-size: 0.72rem; color: #94a3b8; }
+
+  /* Quick buttons */
+  .quick-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+  .quick-btn { padding: 6px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; font-size: 0.82rem; font-weight: 600; color: #475569; cursor: pointer; transition: all .15s; }
+  .quick-btn:hover { border-color: #3b82f6; color: #2563eb; }
+  .quick-btn.active { background: #eff6ff; border-color: #3b82f6; color: #2563eb; }
+
+  /* Tier */
+  .tier-header { display: flex; align-items: center; gap: 10px; margin: 20px 0 8px; }
+  .tier-label { font-weight: 700; font-size: 0.95rem; color: #0f172a; }
+  .tier-tag { font-size: 0.68rem; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 8px; font-weight: 700; }
+  .tier-desc { font-size: 0.78rem; color: #64748b; margin-bottom: 10px; }
+
+  /* Batch row */
+  .batch-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 6px; background: white; transition: border-color .15s; cursor: pointer; }
+  .batch-row:hover { border-color: #94a3b8; }
+  .batch-row.checked { border-color: #3b82f6; background: #f8faff; }
+  .batch-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer; }
+  .batch-row .info { flex: 1; }
+  .batch-row .name { font-weight: 600; font-size: 0.88rem; color: #1e293b; }
+  .batch-row .meta { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+  .batch-row .pillars { display: flex; gap: 4px; }
+  .pillar-dot { width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; color: white; }
+  .pillar-dot.ta { background: #6366f1; }
+  .pillar-dot.sc { background: #dc2626; }
+  .pillar-dot.id { background: #0891b2; }
+  .pillar-dot.rd { background: #d97706; }
+  .pillar-dot.sp { background: #7c3aed; }
+  .pillar-dot.da { background: #059669; }
+  .pillar-dot.ot { background: #e11d48; }
+
+  /* Scanned row */
+  .batch-row.scanned { background: #f0fdf4; border-color: #bbf7d0; cursor: default; }
+  .batch-row.scanned .name { color: #15803d; }
+
+  /* Summary bar */
+  .summary-bar { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 20px; margin: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+  .summary-bar .left { font-weight: 700; font-size: 0.95rem; }
+  .summary-bar .right { font-size: 0.85rem; color: #64748b; }
+
+  /* Run button */
+  .run-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; color: white; cursor: pointer; transition: all .15s; margin-top: 8px; }
+  .run-btn.primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+  .run-btn.primary:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+  .run-btn.secondary { background: #475569; margin-top: 8px; }
+
+  /* Incremental banner */
+  .incr-banner { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 20px; margin-bottom: 16px; }
+  .incr-banner .title { font-weight: 700; color: #1d4ed8; }
+  .incr-banner .body { font-size: 0.85rem; color: #475569; margin-left: 10px; }
+
+  /* Pillar legend */
+  .pillar-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #64748b; }
+
+  /* Tabs */
+  .tab-bar { display: flex; border-bottom: 2px solid #e2e8f0; margin: 24px 0 0; }
+  .tab { padding: 10px 20px; font-weight: 600; font-size: 0.88rem; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+  .tab-content { display: none; padding: 20px 0; }
+  .tab-content.active { display: block; }
+
+  .divider { border: none; border-top: 1px solid #e2e8f0; margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <h1>🔍 New VDR Scan</h1>
+  <p>Configure a deal, point to the data room folder, preview what's inside, then run an automated triage.</p>
+</div>
+
+<!-- ═══════════ PREVIEW HEADER ═══════════ -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+  <div>
+    <span style="font-size:1.1rem;font-weight:800;">VDR Preview — Horizon Healthcare</span>
+    <span style="font-size:0.8rem;color:#64748b;margin-left:8px;">Deal-001 · healthcare-saas · pe-acquisition</span>
+  </div>
+  <span style="font-size:0.78rem;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:2px 10px;border-radius:12px;font-weight:600;">v3</span>
+</div>
+<p class="section-sub">No API calls have been made yet — review and select scope before starting.</p>
+
+<!-- KPI strip -->
+<div class="kpi-strip">
+  <div class="kpi"><div class="label">Documents</div><div class="value">640</div><div class="delta">187 MB total</div></div>
+  <div class="kpi"><div class="label">Batch Groups</div><div class="value">12</div><div class="delta">across 3 tiers</div></div>
+  <div class="kpi"><div class="label">Pillar Coverage</div><div class="value">6 / 7</div><div class="delta">DataAIReadiness blind spot</div></div>
+  <div class="kpi"><div class="label">Predicted Grade</div><div class="value">B–C</div><div class="delta">depends on readability</div></div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════ TAB BAR ═══════════ -->
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('scope')">Scan Scope</div>
+  <div class="tab" onclick="showTab('pillars')">Pillar Coverage</div>
+  <div class="tab" onclick="showTab('gaps')">Gaps & Completeness</div>
+</div>
+
+<!-- ═══════════ TAB: SCAN SCOPE ═══════════ -->
+<div class="tab-content active" id="tab-scope">
+
+<div class="section-title">Scan Scope</div>
+<p class="section-sub">
+  Choose which document categories to scan. <strong>Core Tech</strong> is pre-selected — these cover the deepest technical pillars and get you findings in ~25 minutes. Add more categories now or scan them later incrementally.
+</p>
+
+<!-- Pillar legend -->
+<div class="pillar-legend">
+  <div class="legend-item"><div class="pillar-dot ta" style="width:14px;height:14px;font-size:0.5rem;">TA</div> Tech Architecture</div>
+  <div class="legend-item"><div class="pillar-dot sc" style="width:14px;height:14px;font-size:0.5rem;">SC</div> Security Compliance</div>
+  <div class="legend-item"><div class="pillar-dot id" style="width:14px;height:14px;font-size:0.5rem;">ID</div> Infra & Deploy</div>
+  <div class="legend-item"><div class="pillar-dot rd" style="width:14px;height:14px;font-size:0.5rem;">RD</div> R&D Spend</div>
+  <div class="legend-item"><div class="pillar-dot sp" style="width:14px;height:14px;font-size:0.5rem;">SP</div> SDLC & Product</div>
+  <div class="legend-item"><div class="pillar-dot da" style="width:14px;height:14px;font-size:0.5rem;">DA</div> Data & AI</div>
+  <div class="legend-item"><div class="pillar-dot ot" style="width:14px;height:14px;font-size:0.5rem;">OT</div> Org & Talent</div>
+</div>
+
+<!-- Quick select buttons -->
+<div class="quick-btns">
+  <button class="quick-btn active" onclick="selectCore()">Core Tech Only</button>
+  <button class="quick-btn" onclick="selectAll()">Select All</button>
+  <button class="quick-btn" onclick="deselectAll()">Deselect All</button>
+</div>
+
+<!-- ═══ TIER 1: Core Tech ═══ -->
+<div class="tier-header">
+  <span class="tier-label">Core Tech</span>
+  <span class="tier-tag">RECOMMENDED</span>
+</div>
+<div class="tier-desc">Technology, security, infrastructure, and engineering documents — covers the deepest technical pillars</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Security — Pen Tests</div>
+    <div class="meta">12 docs · 8.2 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot sc">SC</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Security — Compliance (SOC2, HITRUST, ISP)</div>
+    <div class="meta">23 docs · 14.6 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot sc">SC</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Security — Posture & Controls</div>
+    <div class="meta">18 docs · 6.1 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot sc">SC</div><div class="pillar-dot id">ID</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Infrastructure — Cloud Costs</div>
+    <div class="meta">34 docs · 22.3 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot id">ID</div><div class="pillar-dot rd">RD</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Infrastructure — Architecture & Monitoring</div>
+    <div class="meta">28 docs · 15.7 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot ta">TA</div><div class="pillar-dot id">ID</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Infrastructure — DR / BC / Change Mgmt</div>
+    <div class="meta">15 docs · 4.9 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot id">ID</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Product — Overview & AI Architecture</div>
+    <div class="meta">41 docs · 28.4 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot ta">TA</div><div class="pillar-dot sp">SP</div><div class="pillar-dot da">DA</div></div>
+</div>
+
+<div class="batch-row checked" onclick="toggleBatch(this)">
+  <input type="checkbox" checked class="core-cb">
+  <div class="info">
+    <div class="name">Engineering — SDLC & Deployment</div>
+    <div class="meta">31 docs · 11.2 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot sp">SP</div><div class="pillar-dot ta">TA</div></div>
+</div>
+
+<!-- ═══ TIER 2: Supporting Context ═══ -->
+<div class="tier-header">
+  <span class="tier-label">Supporting Context</span>
+</div>
+<div class="tier-desc">Organisational, commercial, and vendor documents that add breadth to the assessment</div>
+
+<div class="batch-row" onclick="toggleBatch(this)">
+  <input type="checkbox" class="extra-cb">
+  <div class="info">
+    <div class="name">Organisation & Talent</div>
+    <div class="meta">45 docs · 18.3 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot ot">OT</div></div>
+</div>
+
+<div class="batch-row" onclick="toggleBatch(this)">
+  <input type="checkbox" class="extra-cb">
+  <div class="info">
+    <div class="name">Commercial — Vendors & Licensing</div>
+    <div class="meta">67 docs · 31.5 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot sc">SC</div><div class="pillar-dot rd">RD</div></div>
+</div>
+
+<div class="batch-row" onclick="toggleBatch(this)">
+  <input type="checkbox" class="extra-cb">
+  <div class="info">
+    <div class="name">Commercial — Sales, GTM & Pricing</div>
+    <div class="meta">89 docs · 34.7 MB</div>
+  </div>
+  <div class="pillars"><div class="pillar-dot sp">SP</div><div class="pillar-dot rd">RD</div></div>
+</div>
+
+<!-- ═══ TIER 3: Uncategorised ═══ -->
+<div class="tier-header">
+  <span class="tier-label">Uncategorised</span>
+</div>
+<div class="tier-desc">Documents that did not match any known pattern — may contain useful signals</div>
+
+<div class="batch-row" onclick="toggleBatch(this)">
+  <input type="checkbox" class="extra-cb">
+  <div class="info">
+    <div class="name">Uncategorised</div>
+    <div class="meta">237 docs · 17.1 MB</div>
+  </div>
+  <div class="pillars"><span style="font-size:0.75rem;color:#94a3b8;">?</span></div>
+</div>
+
+<!-- ═══ SUMMARY BAR ═══ -->
+<div class="summary-bar" id="summary-bar">
+  <span class="left">Selective Scan: <span id="sel-docs">202</span> of 640 docs selected</span>
+  <span class="right">Pillar coverage: <span id="sel-pillars">5</span>/7 · Est. <span id="sel-time">20–30</span> min</span>
+</div>
+
+<!-- Run button -->
+<button class="run-btn primary" id="run-btn">Run Scan (202 docs)</button>
+
+</div>
+
+<!-- ═══════════ TAB: INCREMENTAL VIEW (after first scan) ═══════════ -->
+<div class="tab-content" id="tab-pillars">
+  <div class="section-title">Pillar Coverage</div>
+  <p class="section-sub">Which of the 7 due diligence pillars have at least one document contributing data.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">🟢 TechnologyArchitecture</div>
+      <div style="font-size:0.78rem;color:#64748b;">Scalability, resilience, complexity, cloud posture</div>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">🟢 SecurityCompliance</div>
+      <div style="font-size:0.78rem;color:#64748b;">SOC2, HIPAA, pen testing, vulnerability mgmt</div>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">🟢 InfrastructureDeployment</div>
+      <div style="font-size:0.78rem;color:#64748b;">Cloud infrastructure, DR/BC, CI/CD, observability</div>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">🟢 SDLCProductManagement</div>
+      <div style="font-size:0.78rem;color:#64748b;">SDLC maturity, deployment velocity, product roadmap</div>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">🟢 RDSpendAssessment</div>
+      <div style="font-size:0.78rem;color:#64748b;">R&D spend ratio, capitalization, vendor costs</div>
+    </div>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">🔴 OrganizationTalent</div>
+      <div style="font-size:0.78rem;color:#dc2626;">Missing — add Supporting Context tier</div>
+    </div>
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;">
+      <div style="font-weight:600;font-size:0.88rem;">⬜ DataAIReadiness</div>
+      <div style="font-size:0.78rem;color:#6b7280;">Expected blind spot — needs specialist docs</div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-gaps">
+  <div class="section-title">Gaps & Completeness</div>
+  <p class="section-sub">Expected document checklist based on deal type and sector.</p>
+  <div style="background:#fef2f2;border-left:3px solid #dc2626;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:6px;font-size:0.85rem;"><strong>CRITICAL</strong> — Org Chart / Team Structure</div>
+  <div style="background:#fff7ed;border-left:3px solid #f97316;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:6px;font-size:0.85rem;"><strong>HIGH</strong> — Data Architecture / ERD Diagram</div>
+  <div style="background:#fefce8;border-left:3px solid #eab308;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:6px;font-size:0.85rem;"><strong>MEDIUM</strong> — Open Source Policy / License Audit</div>
+</div>
+
+<script>
+function toggleBatch(row) {
+  const cb = row.querySelector('input[type=checkbox]');
+  cb.checked = !cb.checked;
+  row.classList.toggle('checked', cb.checked);
+  updateSummary();
+}
+
+function selectCore() {
+  document.querySelectorAll('.core-cb').forEach(cb => { cb.checked = true; cb.closest('.batch-row').classList.add('checked'); });
+  document.querySelectorAll('.extra-cb').forEach(cb => { cb.checked = false; cb.closest('.batch-row').classList.remove('checked'); });
+  updateSummary();
+}
+
+function selectAll() {
+  document.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = true; cb.closest('.batch-row').classList.add('checked'); });
+  updateSummary();
+}
+
+function deselectAll() {
+  document.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; cb.closest('.batch-row').classList.remove('checked'); });
+  updateSummary();
+}
+
+const docCounts = [12,23,18,34,28,15,41,31,45,67,89,237];
+const pillarSets = [
+  ['SC'],['SC'],['SC','ID'],['ID','RD'],['TA','ID'],['ID'],['TA','SP','DA'],['SP','TA'],
+  ['OT'],['SC','RD'],['SP','RD'],[]
+];
+
+function updateSummary() {
+  const cbs = document.querySelectorAll('input[type=checkbox]');
+  let docs = 0; const pillars = new Set();
+  cbs.forEach((cb, i) => {
+    if (cb.checked) {
+      docs += docCounts[i];
+      pillarSets[i].forEach(p => pillars.add(p));
+    }
+  });
+  document.getElementById('sel-docs').textContent = docs;
+  document.getElementById('sel-pillars').textContent = pillars.size;
+  const coreSelected = Array.from(document.querySelectorAll('.core-cb')).every(c=>c.checked);
+  const extraSelected = Array.from(document.querySelectorAll('.extra-cb')).some(c=>c.checked);
+  const allSelected = Array.from(cbs).every(c=>c.checked);
+  const noneSelected = !Array.from(cbs).some(c=>c.checked);
+
+  const btn = document.getElementById('run-btn');
+  if (noneSelected) {
+    btn.textContent = 'Select at least one batch';
+    btn.style.opacity = '0.5';
+  } else if (allSelected) {
+    btn.textContent = `Run Full Scan (${docs} docs)`;
+    btn.style.opacity = '1';
+    document.querySelector('.summary-bar .left').innerHTML = `<span class="left">Full Scan: <span id="sel-docs">${docs}</span> of 640 docs selected</span>`;
+  } else {
+    btn.textContent = `Run Scan (${docs} docs)`;
+    btn.style.opacity = '1';
+    document.querySelector('.summary-bar .left').innerHTML = `<span class="left">Selective Scan: <span id="sel-docs">${docs}</span> of 640 docs selected</span>`;
+  }
+
+  const batches = Array.from(cbs).filter(c=>c.checked).length;
+  const low = Math.max(3, Math.round(batches * 0.8));
+  const high = Math.round(batches * 1.8);
+  document.getElementById('sel-time').textContent = `${low}–${high}`;
+}
+
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

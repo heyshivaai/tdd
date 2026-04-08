@@ -1,0 +1,301 @@
+```json
+{
+  "casey_code_quality_report": {
+    "metadata": {
+      "analyst": "Casey",
+      "target": "Veeva Systems",
+      "assessment_scope": "Public signals and inference only",
+      "overall_confidence": "MEDIUM",
+      "confidence_notes": "Core Vault platform repos are private. All findings are inferred from public SDK repos, partner disclosures, and release metadata. Conclusions are directionally reliable but require private access validation before deal decision."
+    },
+    "tasks": {
+      "task_1_maintainability": {
+        "maintainability_rating": "CONCERNING",
+        "findings": [
+          {
+            "finding_id": "M-01",
+            "observation": "vault-api-library has only 50 commits across its entire lifetime, indicating minimal sustained investment in customer-facing integration tooling",
+            "evidence": "50 total commits, primary language Java, REST API client library",
+            "gxp_implication": "Low commit volume in a validated SDK suggests either very low change velocity — acceptable if stable — or that primary development occurs in private repos with public SDK receiving only surface updates. Either way, customer integrations built on this SDK inherit whatever debt exists in the underlying platform without visibility.",
+            "benchmark_comparison": "Comparable enterprise SDK repos at similar-scale SaaS companies typically accumulate 500-2000+ commits over equivalent periods. 50 commits is 10-40x below peer baseline, suggesting this is either a thin wrapper or a severely under-invested integration layer.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Commit count is confirmed but cannot determine if parallel private branch activity exists.",
+            "rating": "CONCERNING"
+          },
+          {
+            "finding_id": "M-02",
+            "observation": "JUnit declared as dependency but zero test folders visible — gap between declared standards and actual engineering practice",
+            "evidence": "Jordan confirmed JUnit dependency declaration present, no test folders visible in public repos",
+            "gxp_implication": "Declaring test tooling without implementing test suites is a red flag for engineering discipline. In GxP context this is not a style issue — it is a compliance signal. Validated software requires documented automated testing. The gap between declaration and practice suggests standards may be aspirational rather than enforced.",
+            "benchmark_comparison": "Any mature Java project with JUnit declared should have src/test directory structure. Absence indicates either tests exist only in private repos (mitigating) or test discipline is absent (critical). Without private access, the worst case must be assumed for due diligence.",
+            "confidence": "HIGH",
+            "confidence_reason": "Directly observable from public repo structure.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "M-03",
+            "observation": "Reactive commit bursts rather than continuous delivery cadence signals fire-fighting maintenance posture",
+            "evidence": "Jordan's velocity assessment: REACTIVE commit pattern identified",
+            "gxp_implication": "Reactive maintenance in GxP environments creates change control risk — compressed timelines for patches conflict with required validation documentation cycles. Reactive posture also suggests technical debt accumulation between burst events.",
+            "benchmark_comparison": "GxP-compliant software organizations maintain planned, continuous delivery with change control pre-approval. Reactive bursts suggest change control is applied retroactively or under pressure, which is a regulatory audit risk.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Commit pattern inferred from public repo history. Private repos may show different cadence.",
+            "rating": "CONCERNING"
+          },
+          {
+            "finding_id": "M-04",
+            "observation": "Annual versioning cadence on maven plugin (24.1.0) suggests disciplined but infrequent release cycle",
+            "evidence": "vaultjavasdk-maven-plugin version 24.1.0, annual versioning pattern inferred",
+            "gxp_implication": "Annual cadence on tooling is acceptable but means customers integrating mid-year absorb unversioned changes. In GxP context, version traceability matters for validation documentation — customers must revalidate against specific versions.",
+            "benchmark_comparison": "Annual major versioning is common in enterprise Java tooling. Neutral signal on its own; becomes concerning combined with reactive patch pattern between versions.",
+            "confidence": "LOW",
+            "confidence_reason": "Single version number observed; cadence inferred from naming convention only.",
+            "rating": "ADEQUATE"
+          },
+          {
+            "finding_id": "M-05",
+            "observation": "PHP presence in stack alongside Java-dominant architecture represents unexplained legacy surface with maintainability overhead",
+            "evidence": "PHP identified in technology stack by prior agents; Java is primary language in public repos",
+            "gxp_implication": "Mixed-language environments require dual competency. In GxP context, validation documentation must cover all languages in the validated stack. PHP is not a common life sciences platform language — its presence suggests legacy acquisition or early architecture that was never fully migrated.",
+            "benchmark_comparison": "Modern life sciences SaaS platforms have largely standardized on Java, Python, or .NET stacks. PHP in a GxP platform is atypical and raises questions about whether validated PHP components have received equivalent engineering investment.",
+            "confidence": "LOW",
+            "confidence_reason": "PHP presence confirmed but scope and purpose of PHP components unknown.",
+            "rating": "CONCERNING"
+          }
+        ],
+        "task_summary": "Maintainability signals are consistently concerning across multiple dimensions. Low commit volume on customer-facing SDK, absent test infrastructure despite declared dependencies, reactive maintenance posture, and unexplained legacy PHP surface collectively indicate an engineering organization that may be stretching its practices below GxP baseline requirements. The annual versioning cadence on the maven plugin is the only neutral-to-positive signal. Confidence is medium overall due to private repo opacity.",
+        "task_rating": "CONCERNING"
+      },
+      "task_2_technical_debt": {
+        "debt_rating": "CRITICAL",
+        "findings": [
+          {
+            "finding_id": "D-01",
+            "observation": "Forced Salesforce-to-Vault CRM migration creates concentrated technical debt accumulation event under time pressure",
+            "evidence": "Salesforce termination deadline 2025; confirmed CRITICAL risk from prior agents",
+            "gxp_implication": "Migrating a validated CRM platform requires full IQ/OQ/PQ re-execution for the replacement system. This is not a standard software migration — it is a regulatory re-validation event. Executing this under deadline pressure with reactive commit cadence creates a high risk of validation shortcuts or incomplete documentation.",
+            "benchmark_comparison": "In GxP contexts, platform migrations of this scale typically take 18-36 months with dedicated validation resources. A forced deadline removes the buffer that sound validation practice requires.",
+            "confidence": "HIGH",
+            "confidence_reason": "Migration deadline and Salesforce termination are confirmed public facts.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "D-02",
+            "observation": "537 technology dependencies creates an enormous maintenance surface for debt accumulation, particularly under GxP change control",
+            "evidence": "537 dependencies identified by prior agents",
+            "gxp_implication": "Each dependency is a potential CVE vector requiring patched validation cycles. In GxP context, a dependency update is not a simple patch — it requires documented change control and potentially re-validation. 537 dependencies means the validation maintenance burden scales non-linearly with any security or compatibility event.",
+            "benchmark_comparison": "Enterprise SaaS platforms of comparable scale typically carry 200-400 direct and transitive dependencies. 537 is elevated and suggests dependency hygiene has not been actively managed. In non-GxP context this is manageable; in GxP context it represents significant ongoing compliance overhead.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Dependency count confirmed but direct vs transitive split unknown, which materially affects the risk assessment.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "D-03",
+            "observation": "Vault-Data-Tools is abandoned — zero contributors, 3 years dormant — representing inherited technical debt with no owner",
+            "evidence": "Confirmed abandoned repo from prior agents",
+            "gxp_implication": "If any current customer workflows depend on Vault-Data-Tools, those workflows are built on unvalidated, unmaintained tooling. An acquirer inherits not just the repo but any downstream customer dependency on it. Dormant GxP tooling without deprecation documentation is a compliance liability.",
+            "benchmark_comparison": "Mature SaaS companies formally deprecate and sunset abandoned tooling with customer migration paths. A 3-year dormant public repo with no deprecation notice signals governance gap.",
+            "confidence": "HIGH",
+            "confidence_reason": "Directly observable from public repo activity.",
+            "rating": "CONCERNING"
+          },
+          {
+            "finding_id": "D-04",
+            "observation": "37% headcount growth target without visible test infrastructure creates accelerating debt accumulation as new engineers ship without test discipline",
+            "evidence": "37% headcount growth target; zero test folders in public repos",
+            "gxp_implication": "Rapid onboarding in GxP environments requires structured knowledge transfer and validation training. Without observable test infrastructure, new engineers have no automated safety net. In validated environments this means manual testing burden scales with headcount, which does not scale sustainably.",
+            "benchmark_comparison": "High-growth engineering organizations without test infrastructure accumulate debt at a compounding rate. In GxP context this is not just a quality risk — it is a regulatory risk as validation documentation must keep pace with code changes.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Test infrastructure absence in public repos confirmed; private repo practices unknown.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "D-05",
+            "observation": "LLM inference added to GxP platform without published validation documentation represents an unquantified and growing debt category",
+            "evidence": "Vault CRM Bot and Voice Control launched April 2025; no public validation documentation identified",
+            "gxp_implication": "Adding non-deterministic AI inference to a deterministic validation framework creates a new category of technical debt — validation debt for which no established regulatory playbook exists. Without published IQ/OQ/PQ for these features, the compliance status of customers using them is unclear.",
+            "benchmark_comparison": "No GxP SaaS peer has fully solved AI validation at this scale. Veeva is in uncharted territory, but the absence of any public validation documentation for launched features suggests they may be operating ahead of their validation process.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Feature launch confirmed; absence of public documentation noted but internal documentation may exist.",
+            "rating": "CRITICAL"
+          }
+        ],
+        "task_summary": "Technical debt assessment is critical across multiple dimensions simultaneously. The Salesforce migration deadline, 537-dependency maintenance surface, abandoned tooling with no deprecation path, rapid headcount growth without test infrastructure, and unvalidated AI feature launches combine to create a debt profile that is both large in current state and accelerating. The GxP context amplifies each of these issues because debt in this environment carries regulatory consequences, not just engineering consequences.",
+        "task_rating": "CRITICAL"
+      },
+      "task_3_gxp_validation": {
+        "validation_discipline_rating": "CRITICAL",
+        "findings": [
+          {
+            "finding_id": "V-01",
+            "observation": "Absence of test infrastructure in public repos is a significant negative signal for broader validation culture",
+            "evidence": "JUnit declared, zero test folders visible across public repos",
+            "gxp_implication": "FDA 21 CFR Part 11 and EU Annex 11 require documented validation including automated testing for software used in regulated workflows. The gap between declaring test tooling and implementing it suggests validation culture may be documentation-driven rather than engineering-driven — a pattern that produces compliant-looking artifacts without underlying engineering rigor.",
+            "regulatory_implication": "If FDA or EMA auditors reviewed public repo structure alongside internal validation documentation, the disconnect between declared and practiced testing would be a finding. This creates audit risk for both Veeva and its regulated customers.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Public repo signals are confirmed; private repo practices remain unknown and could be substantially different.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "V-02",
+            "observation": "UiPath validation automation partnership suggests validation workload is large and formalized, partially compensating for absent automated test signals",
+            "evidence": "UiPath partnership confirmed for validation automation",
+            "gxp_implication": "UiPath-based validation automation indicates Veeva has invested in structured validation workflows. This is a mitigating signal — it suggests validation discipline exists but may be implemented through a different toolchain than JUnit-based unit testing. However, UI-level validation automation does not substitute for unit test coverage of business logic.",
+            "regulatory_implication": "UiPath-based IQ/OQ/PQ scripts are a recognized approach in life sciences validation. If properly documented, this could satisfy regulatory requirements even in the absence of traditional unit test frameworks. Requires private access to confirm.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Partnership confirmed but scope and depth of UiPath validation coverage unknown.",
+            "rating": "ADEQUATE"
+          },
+          {
+            "finding_id": "V-03",
+            "observation": "IQ/OQ/PQ completion status for Vault CRM Bot and Voice Control AI features cannot be confirmed from public signals and is presumed incomplete",
+            "evidence": "Features launched April 2025; no public validation documentation found",
+            "gxp_implication": "IQ/OQ/PQ is required before validated use of software in GxP workflows. If customers are using Vault CRM Bot or Voice Control in regulated contexts without completed validation documentation, they are operating in a non-compliant state. Veeva carries responsibility for providing the validation documentation that enables customer qualification.",
+            "regulatory_implication": "FDA Warning Letters and 483 observations have been issued to life sciences companies for using unvalidated software in regulated workflows. If Veeva shipped these features without validation documentation, or if customers adopted them before documentation was available, there is regulatory exposure across the customer base.",
+            "confidence": "LOW",
+            "confidence_reason": "Absence of public documentation does not confirm absence of internal documentation. Requires private access.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "V-04",
+            "observation": "Non-deterministic LLM outputs are fundamentally incompatible with GxP validation frameworks that require reproducible, deterministic results",
+            "evidence": "LLM inference added to platform; GxP requires deterministic reproducible outputs",
+            "gxp_implication": "Validation protocols require that the same inputs produce the same outputs — this is how IQ/OQ/PQ test scripts work. LLM inference is probabilistic by design. No regulatory guidance from FDA or EMA currently addresses how to validate LLM outputs in GxP workflows. Veeva is operating without a regulatory framework for a feature it has already shipped.",
+            "regulatory_implication": "This is an industry-wide problem, not Veeva-specific. However, being early means being exposed before regulatory guidance crystallizes. If FDA issues guidance that Veeva's current implementation does not satisfy, remediation could require feature withdrawal or significant re-architecture.",
+            "confidence": "HIGH",
+            "confidence_reason": "The fundamental tension between LLM non-determinism and GxP determinism requirements is technically certain. The regulatory consequence timeline is uncertain.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "V-05",
+            "observation": "Reactive maintenance pattern conflicts with GxP change control requirements that mandate pre-approved, documented change cycles",
+            "evidence": "Reactive burst commit pattern from Jordan; GxP change control requires planned validation cycles",
+            "gxp_implication": "GxP change control is not compatible with reactive emergency patching at scale. Every change to validated software requires a change request, impact assessment, validation test execution, and documentation before deployment. A reactive maintenance posture suggests either change control is being bypassed under pressure or the organization has a two-track system — validated and unvalidated — which creates traceability risk.",
+            "regulatory_implication": "Regulatory inspections specifically look for evidence of change control discipline. Reactive patch patterns visible in public commit history could be cited as evidence of inadequate change management during an audit.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Public commit pattern confirmed; private change control documentation unknown.",
+            "rating": "CONCERNING"
+          }
+        ],
+        "task_summary": "GxP validation discipline assessment is the most critical domain in this analysis. The combination of absent test infrastructure, unconfirmed AI feature validation status, fundamental LLM-GxP incompatibility, and reactive maintenance pattern against change control requirements creates a systemic compliance risk profile. The UiPath partnership is a partial mitigant but does not resolve the core tensions. This domain requires immediate private access investigation before any deal valuation can be considered reliable.",
+        "task_rating": "CRITICAL"
+      },
+      "task_4_scope_limitations": {
+        "reliable_conclusions": [
+          "vault-api-library has 50 lifetime commits — confirmed low investment in public customer-facing SDK",
+          "JUnit is declared as a dependency in public repos with zero visible test folder implementation",
+          "Vault-Data-Tools is abandoned — zero contributors, 3 years dormant — confirmed from public repo",
+          "vaultjavasdk-maven-plugin follows annual versioning cadence based on version 24.1.0",
+          "Vault CRM Bot and Voice Control AI features launched April 2025 — no public validation documentation found",
+          "UiPath partnership for validation automation exists — scope unknown",
+          "537 technology dependencies confirmed",
+          "PHP present in technology stack alongside Java-dominant architecture",
+          "Reactive commit burst pattern identified in public repos",
+          "Engineering leadership opacity — confirmed by prior agents"
+        ],
+        "requires_private_access": [
+          "Core Vault platform source code — primary codebase is entirely private",
+          "Internal test suites — JUnit usage may exist in private repos not visible publicly",
+          "IQ/OQ/PQ documentation for Vault CRM Bot and Voice Control AI features",
+          "Change control records — to assess whether reactive commit pattern reflects bypassed or compressed change control",
+          "Audit logging architecture for LLM inference access to regulated records",
+          "Mean time to patch CVE data — requires access to internal security ticketing and deployment records",
+          "Validation master plan — to understand overall validation framework and how AI features are addressed",
+          "PHP component inventory — to assess scope and validation status of legacy PHP surface",
+          "Dependency management policy and CVE remediation SLA documentation",
+          "Internal test coverage reports for validated platform components"
+        ],
+        "private_access_priorities": [
+          {
+            "priority_rank": 1,
+            "access_needed": "IQ/OQ/PQ documentation for Vault CRM Bot and Voice Control AI features",
+            "what_it_unlocks": "Directly answers Riley's highest-priority question and determines whether Veeva's customers are currently operating in non-compliant state — a condition that could trigger regulatory action affecting deal value",
+            "urgency": "CRITICAL"
+          },
+          {
+            "priority_rank": 2,
+            "access_needed": "Audit logging architecture and access control records for LLM inference touching regulated records",
+            "what_it_unlocks": "Determines whether 21 CFR Part 11 audit trail requirements are being met for AI-assisted workflows. Non-compliance here is a potential FDA finding across the customer base.",
+            "urgency": "CRITICAL"
+          },
+          {
+            "priority_rank": 3,
+            "access_needed": "CVE patching records including mean time to remediate and change control documentation for security patches",
+            "what_it_unlocks": "Answers Riley's third question and determines whether the reactive commit pattern reflects a systemic change control problem or an acceptable emergency patch track with compensating controls",
+            "urgency": "CRITICAL"
+          },
+          {
+            "priority_rank": 4,
+            "access_needed": "Internal test suite structure, coverage reports, and validation test scripts for core Vault platform",
+            "what_it_unlocks": "Resolves the critical ambiguity on whether absent public test infrastructure reflects private discipline or genuine absence. This is the single highest-leverage unknown for overall validation culture assessment.",
+            "urgency": "HIGH"
+          },
+          {
+            "priority_rank": 5,
+            "access_needed": "Vault CRM migration technical architecture and validation plan documentation",
+            "what_it_unlocks": "Determines whether the Salesforce-to-Vault CRM migration has a credible validation roadmap. Without this, the 2025 deadline risk cannot be scoped and deal valuation cannot account for migration cost accurately.",
+            "urgency": "HIGH"
+          }
+        ],
+        "riley_questions_addressed": [
+          {
+            "question_summary": "Has IQ/OQ/PQ been completed for Vault CRM Bot and Voice Control AI features?",
+            "status": "PARTIAL",
+            "casey_finding": "No public validation documentation found for either feature. Features launched April 2025. The fundamental tension between LLM non-determinism and GxP validation requirements means standard IQ/OQ/PQ frameworks cannot be applied without modification. Cannot confirm or deny completion from public signals — requires private access to internal validation documentation. Presumption for due diligence purposes: incomplete or non-standard until evidence provided."
+          },
+          {
+            "question_summary": "What audit logging exists for LLM access to regulated records?",
+            "status": "OPEN",
+            "casey_finding": "No public signals available on audit logging architecture for LLM inference. 21 CFR Part 11 requires complete audit trails for all access to electronic records in regulated workflows. Whether Veeva's LLM integration maintains compliant audit trails cannot be assessed from public repos or disclosures. This is a private access requirement ranked #2 in priority."
+          },
+          {
+            "question_summary": "What is mean time to patch critical CVEs under GxP change control?",
+            "status": "OPEN",
+            "casey_finding": "Cannot be determined from public signals. Reactive commit burst pattern is a negative directional indicator — it suggests patches are applied under pressure rather than planned cycles. However, some organizations maintain a legitimate emergency patch track alongside standard change control. 537 dependencies creates a large CVE surface. Actual MTTP data requires private access to security ticketing and deployment records."
+          }
+        ]
+      }
+    },
+    "combination_signals": [
+      {
+        "signal_id": "CS-01",
+        "tasks_combined": ["task_1_maintainability", "task_3_gxp_validation"],
+        "combined_observation": "JUnit declared but absent combined with reactive commit pattern and GxP change control requirements creates a triple-failure scenario: no automated test safety net, compressed validation cycles, and a reactive posture that conflicts with pre-approved change documentation requirements",
+        "deal_implication": "If this pattern extends to the core platform, Veeva's customers may be operating on software that does not meet the validation standards their own regulatory submissions claim. This creates contingent liability risk for the acquirer that is difficult to quantify without private access.",
+        "severity": "CRITICAL"
+      },
+      {
+        "signal_id": "CS-02",
+        "tasks_combined": ["task_2_technical_debt", "task_3_gxp_validation"],
+        "combined_observation": "Salesforce migration deadline, 537 dependencies, and unvalidated AI features are converging simultaneously in 2025. Each individually requires significant validation resources. Executing all three concurrently under deadline pressure with a reactive maintenance organization is a resource capacity crisis for the validation team.",
+        "deal_implication": "Valuation must account for the cost of executing three parallel validation-heavy workstreams. If any of the three slips — particularly the Salesforce migration — customer retention risk materializes before the acquirer can intervene.",
+        "severity": "CRITICAL"
+      },
+      {
+        "signal_id": "CS-03",
+        "tasks_combined": ["task_1_maintainability", "task_2_technical_debt"],
+        "combined_observation": "Low commit volume on public SDK combined with abandoned Vault-Data-Tools and PHP legacy surface suggests a pattern of investment concentration in the core private platform at the expense of peripheral tooling. This is rational but creates an ecosystem of under-maintained customer-facing tooling.",
+        "deal_implication": "Customers relying on SDK tooling or legacy integrations face higher migration risk and support costs post-acquisition. The ecosystem quality signal is weaker than the core platform signal.",
+        "severity": "MEDIUM"
+      },
+      {
+        "signal_id": "CS-04",
+        "tasks_combined": ["task_2_technical_debt", "task_3_gxp_validation"],
+        "combined_observation": "LLM non-determinism in a GxP platform combined with no published validation documentation and 37% headcount growth creates a scenario where the fastest-growing engineering team is building the least-validated feature category on the platform",
+        "deal_implication": "If FDA issues restrictive guidance on LLM use in regulated workflows, Veeva may face forced feature withdrawal or significant re-architecture during the acquirer's ownership period. This is a tail risk but not negligible given FDA's increasing attention to AI in regulated industries.",
+        "severity": "HIGH"
+      }
+    ],
+    "priority_questions_for_taylor": [
+      "Can you confirm existence and scope of IQ/OQ/PQ documentation for Vault CRM Bot and Voice Control, specifically addressing how non-deterministic LLM outputs are handled within the validation framework?",
+      "What is the audit logging architecture for LLM inference touching 21 CFR Part 11 regulated records — does every LLM-assisted action generate a compliant, immutable audit trail?",
+      "What is the documented mean time to remediate critical CVEs, and does the organization maintain a separate emergency patch track from standard GxP change control or are all patches subject to full change control cycles?",
+      "What is the internal test coverage posture for core Vault platform? Does JUnit implementation exist in private repos, and what is the automated test coverage percentage for validated components?",
+      "What is the validation resourcing plan for executing concurrent Salesforce migration re-validation, AI feature validation, and ongoing platform change control in 2025 — has headcount been scoped for this?",
+      "Has Veeva engaged FDA or EMA in any pre-submission meetings or regulatory discussions regarding AI/LLM use in GxP-regulated workflows?",
+      "What is the formal deprecation and migration plan for Vault-Data-Tools, and have customers been formally notified of its end-of-life status?"
+    ],
+    "overall_domain_rating": "CRITICAL",
+    "overall_domain_summary": "Code quality and GxP validation discipline assessment returns a CRITICAL overall rating. The convergence of absent test infrastructure in public repos, unconfirmed validation status for shipped AI features, fundamental LLM-GxP incompatibility, reactive maintenance posture conflicting with change control requirements, and three concurrent validation-heavy workstreams in 2025 creates a systemic compliance risk profile that cannot be resolved through private access alone — the structural tensions are inherent to the architecture and product decisions made. The UiPath partnership and annual versioning cadence are partial mitigants but do not offset the core findings. Private access to validation documentation is required before any reliable deal valuation is possible. The key unknown is whether the public repo signals reflect genuine organizational practice or a deliberate separation between public SDK work and a more disciplined private platform — that distinction is worth approximately 20-30% of deal value if the private reality is substantially better than the public signals suggest."
+  }
+}

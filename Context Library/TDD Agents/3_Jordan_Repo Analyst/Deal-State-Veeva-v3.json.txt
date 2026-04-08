@@ -1,0 +1,290 @@
+{
+  "jordan_repository_report": {
+    "metadata": {
+      "analyst": "Jordan",
+      "target": "Veeva Systems",
+      "repos_analyzed": "25",
+      "analysis_scope": "Public GitHub repositories only — SDK tooling and API libraries. Core Vault platform, internal engineering systems, and proprietary repositories are entirely outside this scope. All findings are bounded by this limitation.",
+      "overall_confidence": "MEDIUM",
+      "confidence_notes": "Public repos represent a narrow, deliberately curated surface. Veeva's contributor anonymity policy and private org membership further compress signal quality. Findings are directionally valid but cannot be extrapolated to core platform with high confidence."
+    },
+    "tasks": {
+      "task_1_contribution_concentration": {
+        "bus_factor_estimate": 2,
+        "bus_factor_rating": "CRITICAL",
+        "findings": [
+          {
+            "finding_id": "T1-F1",
+            "observation": "vault-api-library, the primary customer-facing integration SDK, shows only 4 visible contributors across 50 total commits. With commit timestamps spanning 5 years and recent activity concentrated in a 2-month window, active maintenance likely rests on 1-2 individuals.",
+            "benchmark_comparison": "Industry norm for a $3B+ enterprise SaaS primary SDK repo is 10-30 visible contributors. 4 contributors represents the low end of small startups, not a platform serving regulated life sciences enterprises at this scale.",
+            "deal_implication": "If 1-2 engineers own the integration layer that customers depend on for Vault connectivity, any departure during or after acquisition creates immediate integration stability risk. Partner integrations built on VAPIL could break or go unsupported.",
+            "gxp_specific_implication": "In GxP environments, validated integrations built on VAPIL require controlled change management. A bus factor of 2 on the SDK means unplanned personnel changes could force customers into unplanned revalidation cycles — a material compliance and commercial risk.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "GitHub visibility is capped by contributor anonymity policy. Actual internal contributor count may be higher but is not publicly verifiable.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "T1-F2",
+            "observation": "Vault-Data-Tools shows zero visible contributors and last commit 3 years ago. The repository has not been archived — it sits in a state of silent abandonment.",
+            "benchmark_comparison": "Best practice at enterprise scale is to formally archive deprecated repositories with a migration notice. Silent abandonment without archiving misleads customers and partners who may still be evaluating or using the tooling.",
+            "deal_implication": "Any customer or partner still using Vault-Data-Tools is building on unmaintained infrastructure with no support signal. Due diligence should surface whether active customer implementations depend on this repo.",
+            "gxp_specific_implication": "A GxP customer using validated tooling from Vault-Data-Tools has no vendor signal that the tool is deprecated. This creates a quiet validation liability — the customer believes they are on supported infrastructure when they are not.",
+            "confidence": "HIGH",
+            "confidence_reason": "3-year commit dormancy and zero contributors are directly observable and unambiguous.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "T1-F3",
+            "observation": "Veeva's GitHub organization lists zero public members. Contributor anonymity is enforced at the organizational level, not just at the repo level.",
+            "benchmark_comparison": "Most enterprise SaaS organizations of this scale allow at least senior engineers and developer relations staff to appear as public org members. Full anonymity at this scale is unusual and deliberate.",
+            "deal_implication": "Contributor anonymity makes it impossible to assess engineering team structure, seniority distribution, or key person identification from public signals alone. This compounds the opacity Morgan flagged around engineering leadership.",
+            "gxp_specific_implication": "In a GxP acquisition, understanding who owns validation-critical systems is a due diligence requirement. Organizational anonymity on public repos is a proxy signal for the broader opacity that will need to be resolved through private access.",
+            "confidence": "HIGH",
+            "confidence_reason": "Zero public org members is a directly observable fact.",
+            "rating": "CONCERNING"
+          }
+        ],
+        "task_summary": "Contributor concentration across examined public repos is critically low relative to Veeva's scale. The primary SDK operates at a bus factor of approximately 2. One repo is silently abandoned without archiving. Full contributor anonymity at the org level prevents any external triangulation of team structure. These signals collectively indicate either a very small public-facing engineering surface team or a deliberate policy of opacity — both of which carry deal risk in a GxP acquisition context.",
+        "task_rating": "CRITICAL"
+      },
+      "task_2_velocity_and_maintenance": {
+        "velocity_trend": "REACTIVE",
+        "findings": [
+          {
+            "finding_id": "T2-F1",
+            "observation": "vault-api-library commit pattern: 5 years ago, 2 years ago, 10 months ago, 2 months ago, 2 months ago. This is not a continuous development cadence. It is episodic activity with long dormancy gaps followed by bursts — the pattern of reactive maintenance, not disciplined ongoing development.",
+            "benchmark_comparison": "Actively maintained enterprise SDK repos at this scale typically show weekly or biweekly commits. A pattern spanning 5 years with only 50 total commits — roughly 10 commits per year — is well below benchmark for a customer-critical integration library.",
+            "deal_implication": "Reactive maintenance on the primary integration SDK means customer-reported issues or platform changes may go unaddressed for months. For partners building on VAPIL, this creates integration reliability uncertainty.",
+            "gxp_specific_implication": "GxP validation timelines are long. If SDK updates are reactive and infrequent, customers may be forced to maintain older validated versions indefinitely, or undertake expensive revalidation on short notice when a burst update introduces breaking changes.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Only 5 commit timestamps visible. Pattern is directionally clear but small sample limits certainty.",
+            "rating": "CONCERNING"
+          },
+          {
+            "finding_id": "T2-F2",
+            "observation": "Two repositories — vault-api-library and Vault-Direct-Data-API-Accelerators — both show activity approximately 2 months ago. The simultaneity is notable.",
+            "benchmark_comparison": "Coordinated activity across repos suggests a release event, platform update, or directed maintenance sprint rather than organic continuous development. This is consistent with version-driven or deadline-driven engineering culture.",
+            "deal_implication": "If engineering activity is triggered by platform release cycles rather than continuous improvement, the team may be stretched thin managing reactive bursts. In the context of the Salesforce migration deadline, this pattern raises the question of whether the same reactive posture applies to the core migration effort.",
+            "gxp_specific_implication": "Burst-driven updates in GxP tooling without continuous regression testing increase the risk of introducing unvalidated changes. Coordinated but infrequent updates are a change control risk pattern.",
+            "confidence": "LOW",
+            "confidence_reason": "Two data points are insufficient to confirm coordination. Could be coincidental. Directional signal only.",
+            "rating": "CONCERNING"
+          },
+          {
+            "finding_id": "T2-F3",
+            "observation": "Vault-Data-Tools last commit is 3 years ago. No deprecation notice, no archiving, no migration path documented.",
+            "benchmark_comparison": "Enterprise SDK deprecation best practice includes formal deprecation notices, migration documentation, and repository archiving with a sunset date. None of these are present.",
+            "deal_implication": "Failure to formally deprecate suggests either the team lacks bandwidth for maintenance hygiene or the organizational culture does not prioritize public-facing developer experience. Both are signals about engineering discipline.",
+            "gxp_specific_implication": "Undocumented deprecation of tooling in a GxP context leaves customers in a validation gray zone. A regulated customer cannot make an informed decision to revalidate without a clear deprecation signal from the vendor.",
+            "confidence": "HIGH",
+            "confidence_reason": "3-year dormancy without archiving is directly observable.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "T2-F4",
+            "observation": "vaultjavasdk-maven-plugin is on version 24.1.0, indicating a 2024 release. Version currency is confirmed as of research date.",
+            "benchmark_comparison": "Version alignment with platform release cadence is a positive signal. 24.1.0 nomenclature suggests a structured versioning scheme tied to a calendar year, consistent with disciplined release management on at least this component.",
+            "deal_implication": "The maven plugin appears to be the most actively managed public-facing build tool. This is a positive counterpoint to the reactive signals elsewhere, though a single well-maintained repo does not offset broader maintenance discipline concerns.",
+            "gxp_specific_implication": "Current version currency on the build tooling is necessary for customers to maintain validated build pipelines. This is a positive GxP signal for this specific component.",
+            "confidence": "HIGH",
+            "confidence_reason": "Version string and currency are directly observable.",
+            "rating": "ADEQUATE"
+          }
+        ],
+        "task_summary": "Development velocity across examined repos is reactive rather than continuous. vault-api-library shows a 5-year episodic commit pattern inconsistent with active SDK stewardship at Veeva's scale. Simultaneous activity across two repos 2 months ago suggests release-triggered rather than organic development. The maven plugin is a positive outlier for version currency. Vault-Data-Tools represents a complete maintenance failure. Overall pattern is consistent with a small team managing a large surface area reactively, which is a material risk signal in the context of an active platform migration.",
+        "task_rating": "CONCERNING"
+      },
+      "task_3_test_infrastructure": {
+        "test_coverage_proxy_score": "ABSENT",
+        "findings": [
+          {
+            "finding_id": "T3-F1",
+            "observation": "vault-api-library, the primary customer-facing Java SDK, shows no visible test folders. A REST API client library with no test infrastructure has no automated regression safety net.",
+            "benchmark_comparison": "Enterprise SDK repos at comparable companies — MuleSoft, Salesforce, ServiceNow — include extensive test suites, often with test coverage reports published in CI pipelines. Absence of tests in the most customer-visible repo is a significant below-benchmark signal.",
+            "deal_implication": "Without test infrastructure, changes to vault-api-library cannot be validated automatically before release. Every SDK update carries silent regression risk for the customer integrations built on it.",
+            "gxp_specific_implication": "This is the highest-severity GxP finding in this task. Customers using VAPIL to build validated integrations cannot rely on upstream test coverage to anchor their own validation. Veeva is implicitly transferring the regression burden to customers — every SDK change potentially triggers a customer revalidation event. This is a structural validation cost transfer to the customer base.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Test folders not visible in public repo. Tests could exist in a private branch, CI pipeline, or separate internal repo not publicly visible. Absence of public test infrastructure is a real signal but does not confirm total absence of testing.",
+            "rating": "CRITICAL"
+          },
+          {
+            "finding_id": "T3-F2",
+            "observation": "No test infrastructure is visible across any of the examined repos. This is a consistent pattern, not an anomaly in a single repo.",
+            "benchmark_comparison": "SDK and tooling repos at enterprise scale typically use test suites as reference implementations for customers — demonstrating how to validate API calls, handle errors, and test integrations. Absence across all repos is a consistent below-benchmark finding.",
+            "deal_implication": "The consistent absence of public test infrastructure signals either a cultural deprioritization of test-driven development, or a deliberate policy of keeping test code internal. Both have implications for due diligence.",
+            "gxp_specific_implication": "In GxP contexts, test infrastructure is not optional — it is part of the validation evidence package. If Veeva's public tooling lacks tests, buyers must probe whether internal platform teams apply different standards, or whether the same gap exists on core Vault platform code.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Consistent across observed repos but public repos may not be representative of internal practices.",
+            "rating": "CONCERNING"
+          }
+        ],
+        "task_summary": "Test infrastructure is absent from all publicly examined repos. For a company serving regulated life sciences customers where validation is a core product promise, this is a material signal requiring explanation. The most charitable interpretation is that tests exist internally but are not published. The most concerning interpretation is that the reactive maintenance pattern and absent test infrastructure reflect a broader engineering culture where quality assurance is informal. Private access to core platform repos and CI/CD systems is required to resolve this.",
+        "task_rating": "CRITICAL"
+      },
+      "task_4_language_and_dependency": {
+        "stack_maturity_rating": "ADEQUATE",
+        "findings": [
+          {
+            "finding_id": "T4-F1",
+            "observation": "Java is the dominant language across public repos, with vault-api-library and Vault-Data-Tools both Java-based. Java is a mature, stable enterprise language with a deep talent pool.",
+            "benchmark_comparison": "Java is a standard choice for enterprise SaaS API libraries, particularly for life sciences platforms with regulated customer bases that value stability over novelty. This is consistent with the industry.",
+            "deal_implication": "Java talent is widely available and well-understood by enterprise buyers. It does not create a talent acquisition risk post-transaction. However, Java's verbosity and slower iteration cycles relative to modern languages may constrain development velocity.",
+            "gxp_specific_implication": "Java's strong typing and mature testing frameworks (JUnit, Mockito) make it well-suited for GxP validation. The absence of test infrastructure in Java repos is therefore more notable — the language provides the tooling; the team has not used it publicly.",
+            "confidence": "HIGH",
+            "confidence_reason": "Language is directly observable across repos.",
+            "rating": "ADEQUATE"
+          },
+          {
+            "finding_id": "T4-F2",
+            "observation": "Python appears in Vault-Direct-Data-API-Accelerators, which is actively maintained with recent activity 2 months ago. Python's presence in a data-focused accelerator repo signals awareness of modern data workload patterns.",
+            "benchmark_comparison": "Python emergence alongside a legacy Java core is a common pattern in enterprise SaaS platforms expanding into data and analytics use cases. This is consistent with market direction.",
+            "deal_implication": "Python presence in the data accelerator repo suggests Veeva is building toward data pipeline and analytics use cases, consistent with life sciences data trends. This is a positive strategic signal for platform evolution.",
+            "gxp_specific_implication": "Python's ecosystem for data validation (Great Expectations, Pandera) and scientific computing aligns with life sciences data workloads. If Veeva is expanding into regulated data pipelines, Python infrastructure investment is directionally correct.",
+            "confidence": "MEDIUM",
+            "confidence_reason": "Single repo signal. Strategic intent inference is speculative.",
+            "rating": "ADEQUATE"
+          },
+          {
+            "finding_id": "T4-F3",
+            "observation": "PHP is absent from all 25 public repositories. Morgan's StackShare research identified PHP as part of the technology stack. This discrepancy requires explanation.",
+            "benchmark_comparison": "PHP is not a common choice for modern enterprise SaaS API libraries or SDK tooling. Its absence from public repos is expected if PHP is used in legacy or internal web layers rather than in customer-facing tooling.",
+            "deal_implication": "PHP's presence in StackShare signals but absence from public repos most likely indicates PHP is deployed in internal web application layers — possibly legacy web UIs, internal tooling, or the original Vault web application layer. This places PHP in the highest-risk part of the architecture: internal, not customer-visible, and therefore not subject to the discipline applied to external-facing code.",
+            "gxp_specific_implication": "If PHP is in the core Vault application layer, it represents a technical debt risk in a GxP context. PHP's lack of strong typing and historically loose security posture require compensating controls that must be assessed through private access.",
+            "confidence": "LOW",
+            "confidence_reason": "PHP location in the architecture is inferred from absence, not confirmed. StackShare signals require corroboration through private access.",
+            "rating": "CONCERNING"
+          },
+          {
+            "finding_id": "T4-F4",
+            "observation": "Maven is confirmed as the build tooling for the Java SDK layer, with version 24.1.0 indicating a structured 2024 release. Maven is a mature, well-understood build system for Java enterprise development.",
+            "benchmark_comparison": "Maven is standard for Java enterprise projects. Its use here is neither a positive nor negative differentiator — it is consistent with the Java ecosystem norms.",
+            "deal_implication": "Maven's presence indicates structured dependency management and reproducible builds for the SDK layer. This is a baseline positive signal for build infrastructure maturity on the Java surface.",
+            "gxp_specific_implication": "Reproducible builds are a GxP requirement for validated software supply chains. Maven's dependency management model supports this, provided it is used with locked dependency versions and documented build environments.",
+            "confidence": "HIGH",
+            "confidence_reason": "Build tooling is directly observable from repo and version string.",
+            "rating": "ADEQUATE"
+          }
+        ],
+        "task_summary": "The language and dependency profile is appropriate for enterprise SaaS at this scale. Java dominance is conservative but stable. Python emergence in data tooling is a positive forward signal. PHP's absence from public repos most likely places it in internal or legacy web application layers — which is where architectural debt most commonly accumulates and where GxP risk is highest. Maven build tooling is mature and consistent with Java enterprise norms. The stack does not raise acute talent or stability concerns on the public surface, but PHP's inferred location in the internal architecture requires private access to assess.",
+        "task_rating": "ADEQUATE"
+      },
+      "task_5_scope_limitations": {
+        "reliable_conclusions": [
+          "Contributor concentration on vault-api-library is critically low relative to company scale — 4 visible contributors is below benchmark regardless of internal staffing levels.",
+          "Vault-Data-Tools is effectively abandoned and has not been formally deprecated — this is a fact, not an inference.",
+          "vault-api-library exhibits a reactive, episodic commit pattern over 5 years — the pattern is directly observable.",
+          "No test infrastructure is visible in any examined public repo — this is a directly observable absence.",
+          "Java is the dominant public-facing language with Python emerging in data tooling — directly observable.",
+          "PHP is absent from all 25 public repos — directly observable, though the implication requires inference.",
+          "Veeva enforces full contributor anonymity at the GitHub org level — directly observable.",
+          "vaultjavasdk-maven-plugin is current at version 24.1.0 — directly observable."
+        ],
+        "unreliable_or_unknown": [
+          "Internal contributor counts on core Vault platform — public repo contributor counts are not representative of total engineering headcount or team structure.",
+          "Core Vault platform engineering health — public repos are SDK tooling, not the platform itself. No inference about core platform quality should be made from this data alone.",
+          "Internal test coverage — absence of public test infrastructure does not confirm absence of internal testing. CI/CD pipelines and internal test suites are not visible.",
+          "PHP architectural location and scope — StackShare presence confirmed but exact role, scope, and version cannot be determined from public repos.",
+          "Engineering leadership identity and structure — contributor anonymity and private org membership prevent any identification of key engineering personnel.",
+          "Vault CRM migration technical progress — no public repo signals are available for the core CRM migration effort.",
+          "GxP validation infrastructure — no signals are available about Veeva's internal validation practices, SDLC documentation, or audit trail systems.",
+          "Reason for simultaneous 2-month activity burst — coordination versus coincidence cannot be determined from available data."
+        ],
+        "private_access_priorities": [
+          {
+            "priority_rank": 1,
+            "access_needed": "Core Vault platform source code repositories — particularly Vault CRM and Vault for Clinical",
+            "what_it_unlocks": "Direct assessment of engineering health, test coverage, contributor distribution, and migration progress on the systems that generate the majority of Veeva's revenue and carry the highest GxP risk.",
+            "urgency": "CRITICAL"
+          },
+          {
+            "priority_rank": 2,
+            "access_needed": "CI/CD pipeline configuration and test coverage reports",
+            "what_it_unlocks": "Resolves the test infrastructure question definitively. Confirms or denies whether the public repo absence of tests reflects internal engineering culture or a deliberate public repo policy.",
+            "urgency": "CRITICAL"
+          },
+          {
+            "priority_rank": 3,
+            "access_needed": "Engineering org chart and headcount data by team and system",
+            "what_it_unlocks": "Resolves contributor anonymity and bus factor questions. Identifies key person dependencies on migration-critical and GxP-critical systems.",
+            "urgency": "CRITICAL"
+          },
+          {
+            "priority_rank": 4,
+            "access_needed": "PHP codebase scope and location — specifically which systems use PHP and what version",
+            "what_it_unlocks": "Confirms or refutes the inference that PHP is in legacy web application layers. Quantifies the technical debt and migration effort if PHP retirement is planned or necessary.",
+            "urgency": "HIGH"
+          },
+          {
+            "priority_rank": 5,
+            "access_needed": "Vault CRM migration technical roadmap and sprint/milestone data",
+            "what_it_unlocks": "Directly addresses the highest-confirmed deal risk — the Salesforce migration deadline. Public repos provide zero signal on migration progress.",
+            "urgency": "CRITICAL"
+          }
+        ],
+        "morgan_questions_addressed": [
+          {
+            "question_summary": "What explains contributor concentration in public repos and does it signal broader organizational bus factor risk?",
+            "status": "PARTIAL",
+            "jordan_finding": "Contributor concentration is confirmed as critically low on public repos relative to benchmark. Bus factor of approximately 2 on vault-api-library is a real finding. However, whether this reflects internal staffing reality or is an artifact of the contributor anonymity policy cannot be determined from public data alone. Private access to org chart and internal repo contributor data is required to confirm or refute as a broader organizational signal."
+          },
+          {
+            "question_summary": "What is the PHP surface area and is there a retirement signal?",
+            "status": "OPEN",
+            "jordan_finding": "PHP is absent from all 25 public repos. Its presence in StackShare signals places it in internal architecture layers not visible from public repos. No retirement signal is visible — but no continuation signal either. PHP's location, scope, version, and roadmap are entirely opaque from public data. This requires private access to resolve."
+          },
+          {
+            "question_summary": "What does commit pattern behavior signal about development culture and maintenance discipline?",
+            "status": "PARTIAL",
+            "jordan_finding": "Commit patterns are consistent with reactive, release-triggered maintenance rather than continuous disciplined development. This is a directionally valid finding supported by observable data. However, public SDK repos may be intentionally low-maintenance if the core platform development occurs entirely in private repos with different cadences. The reactive pattern is a real signal but its extrapolation to core platform culture is not supported by public data alone."
+          },
+          {
+            "question_summary": "What does absence of test infrastructure in public repos signal about broader engineering practices?",
+            "status": "PARTIAL",
+            "jordan_finding": "Absence of test infrastructure is confirmed across all examined repos. The GxP implication — that validation burden is transferred downstream to customers — is a real and specific concern. However, whether this reflects internal test culture or a policy of keeping tests internal cannot be determined without CI/CD access. The finding stands as a material question requiring private access to resolve, not a confirmed conclusion."
+          }
+        ]
+      }
+    },
+    "combination_signals": [
+      {
+        "signal_id": "CS-01",
+        "tasks_combined": ["task_1_contribution_concentration", "task_2_velocity_and_maintenance"],
+        "combined_observation": "Low contributor count combined with reactive commit cadence on vault-api-library creates a compounding risk: a small team is maintaining a customer-critical SDK in burst cycles rather than continuously. This pattern is consistent with a team that is understaffed relative to its maintenance surface area.",
+        "deal_implication": "Post-acquisition, SDK stability risk is elevated if the team maintaining it is small and reactive. In the context of the Salesforce migration consuming engineering bandwidth, SDK maintenance may be further deprioritized during the most critical transition period.",
+        "severity": "HIGH"
+      },
+      {
+        "signal_id": "CS-02",
+        "tasks_combined": ["task_3_test_infrastructure", "task_4_language_and_dependency"],
+        "combined_observation": "Java's mature testing ecosystem (JUnit, Mockito) is entirely unused in public repos. The gap between available tooling and actual public test infrastructure is not a tooling problem — it is a culture or priority problem.",
+        "deal_implication": "Java without tests in a GxP context is a stronger negative signal than an interpreted language without tests. The tooling exists; the discipline to apply it is not visible. This increases confidence that the test absence is cultural rather than technical.",
+        "severity": "HIGH"
+      },
+      {
+        "signal_id": "CS-03",
+        "tasks_combined": ["task_1_contribution_concentration", "task_3_test_infrastructure", "task_2_velocity_and_maintenance"],
+        "combined_observation": "The combination of low contributor count, absent test infrastructure, and reactive commit patterns across the same repos produces a coherent picture: a small team maintaining tooling reactively without automated quality gates.",
+        "deal_implication": "This triple combination is the highest-confidence finding from public repo analysis. It does not confirm the same pattern on core platform — but it raises the prior probability that engineering discipline issues are not isolated to public repos.",
+        "severity": "CRITICAL"
+      },
+      {
+        "signal_id": "CS-04",
+        "tasks_combined": ["task_4_language_and_dependency", "task_5_scope_limitations"],
+        "combined_observation": "PHP presence in StackShare combined with complete absence from 25 public repos strongly suggests PHP is embedded in internal application layers — precisely the layers that are most opaque and carry the highest undisclosed technical debt risk.",
+        "deal_implication": "An acquirer buying a $3B+ life sciences SaaS platform with unknown PHP scope in core application layers faces a potential technical debt surprise post-close. PHP quantification is a pre-LOI priority, not a post-close integration discovery item.",
+        "severity": "HIGH"
+      }
+    ],
+    "priority_questions_for_riley": [
+      "What is the total engineering headcount broken down by platform team, and what is the contributor-to-system ratio for GxP-critical systems?",
+      "Where exactly does PHP appear in the Vault architecture — which systems, which versions, and is there an active retirement roadmap?",
+      "What CI/CD systems are in use and what are the test coverage metrics for core Vault platform code versus SDK tooling?",
+      "How is the Vault CRM migration staffed — is it a dedicated team or drawing on the same engineers maintaining existing Vault platform stability?",
+      "What is the GxP validation SDLC — specifically, how are software changes validated, what is the change control process, and where are validation artifacts stored?",
+      "Have there been any FDA 21 CFR Part 11 or EU Annex 11 audit findings related to software validation in the last 3 years?",
+      "What is the retention status of engineering leadership and senior individual contributors — have there been departures following the Salesforce announcement?"
+    ],
+    "overall_domain_rating": "CONCERNING",
+    "overall_domain_summary": "Public repository analysis of Veeva's 25 GitHub repos yields a coherent but scope-limited picture. The signals that are visible — low contributor counts, reactive maintenance patterns, absent test infrastructure, and one silently abandoned repo — combine to suggest an engineering culture where public-facing tooling is maintained by a small team operating reactively rather than continuously. These findings are directionally concerning for a $3B+ GxP SaaS platform, particularly given the concurrent pressure of the Salesforce migration deadline. However, the public repo surface is SDK tooling, not core Vault platform — and Veeva's deliberate contributor anonymity policy prevents confident extrapolation to internal engineering health. The overall rating is CONCERNING rather than CRITICAL because the scope limitation is genuine: the data cannot confirm that core platform engineering shares the same patterns. Private access to core repos, CI/CD pipelines, org chart data, and migration roadmaps is required before any of these signals can be elevated to definitive findings."
+  }
+}

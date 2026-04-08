@@ -1,0 +1,2729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic TDD Practice — Crosslake Technologies</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=DM+Mono:wght@300;400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:      #0d0d12;
+  --paper:    #f7f4ee;
+  --cream:    #edeadf;
+  --accent:   #c0321a;
+  --accent-lt:#f9eeeb;
+  --gold:     #b08d2a;
+  --gold-lt:  #fdf9ee;
+  --muted:    #5c5852;
+  --rule:     #d8d3c8;
+  --crit:     #c0321a;
+  --conc:     #b08d2a;
+  --strong:   #27608a;
+  --h1:       #0d0d12;
+  --tab-h:    64px;
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── MASTHEAD ── */
+.masthead {
+  padding: 40px 72px 32px;
+  border-bottom: 3px double var(--ink);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 24px;
+  background: var(--paper);
+}
+.mh-side {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.9;
+}
+.mh-side.right { text-align: right; }
+.mh-center { text-align: center; }
+.mh-center h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.mh-center .tagline {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+/* ── TAB NAV ── */
+.tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--ink);
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.tab-btn {
+  flex: 1;
+  padding: 0 20px;
+  height: var(--tab-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: rgba(247,244,238,0.45);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.2s, color 0.2s;
+  position: relative;
+}
+.tab-btn:last-child { border-right: none; }
+.tab-btn:hover { color: rgba(247,244,238,0.75); background: rgba(255,255,255,0.04); }
+.tab-btn.active {
+  color: var(--paper);
+  background: rgba(255,255,255,0.07);
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold);
+}
+.tab-num {
+  font-size: 10px;
+  opacity: 0.4;
+  margin-right: 2px;
+}
+.tab-soon {
+  font-size: 9px;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  color: rgba(247,244,238,0.3);
+  margin-left: 4px;
+}
+
+/* ── TAB PANELS ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── SECTION ── */
+.sec {
+  padding: 64px 72px;
+  border-bottom: 1px solid var(--rule);
+}
+.sec-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sec-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* ══════════════════════════════════════
+   TAB 1 — THE OPPORTUNITY
+══════════════════════════════════════ */
+
+/* Hero intro */
+.opp-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 72px;
+  align-items: center;
+}
+.opp-hero-left h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 28px;
+  letter-spacing: -0.02em;
+}
+.opp-hero-left h2 em {
+  font-style: italic;
+  color: var(--gold);
+}
+.opp-hero-left p {
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.opp-hero-left p strong { color: var(--ink); font-weight: 600; }
+
+/* Market visual */
+.market-visual {
+  background: var(--ink);
+  padding: 36px 32px;
+  position: relative;
+  overflow: hidden;
+}
+.market-visual::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(176,141,42,0.12) 0%, transparent 70%);
+}
+.mv-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.35);
+  margin-bottom: 24px;
+}
+.mv-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.mv-stat {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.mv-stat:last-child { border-bottom: none; }
+.mv-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+.mv-bar {
+  height: 100%;
+  background: var(--gold);
+  transform-origin: left;
+  animation: barGrow 1.2s cubic-bezier(0.4,0,0.2,1) both;
+}
+.mv-bar.accent { background: var(--accent); }
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.mv-stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--paper);
+  white-space: nowrap;
+  min-width: 90px;
+}
+.mv-stat-num.gold { color: var(--gold); }
+.mv-stat-label {
+  font-size: 13px;
+  color: rgba(247,244,238,0.55);
+  line-height: 1.4;
+  min-width: 140px;
+}
+.mv-stat-label strong {
+  display: block;
+  color: rgba(247,244,238,0.85);
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+/* Vision */
+.vision-full {
+  margin-top: 40px;
+  padding: 36px 40px;
+  background: var(--ink);
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+}
+.vision-full::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; right: -40px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(176,141,42,0.1) 0%, transparent 70%);
+}
+.vf-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.35);
+  margin-bottom: 14px;
+}
+.vf-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-style: italic;
+  line-height: 1.6;
+  color: #f0ece4;
+  position: relative;
+  z-index: 1;
+}
+
+/* Value props */
+.vp-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+.vp-card {
+  background: var(--paper);
+  padding: 36px 30px;
+}
+.vp-card.dark { background: var(--ink); }
+.vp-icon {
+  width: 48px; height: 48px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cream);
+  font-size: 22px;
+}
+.vp-card.dark .vp-icon { background: rgba(255,255,255,0.06); }
+.vp-seq {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.vp-card.dark .vp-seq { color: rgba(247,244,238,0.35); }
+.vp-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.vp-card.dark .vp-title { color: var(--paper); }
+.vp-hook {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.vp-card.dark .vp-hook { border-bottom-color: rgba(247,244,238,0.1); }
+.vp-body {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.vp-card.dark .vp-body { color: rgba(247,244,238,0.65); }
+.vp-body strong { color: var(--ink); font-weight: 600; }
+.vp-card.dark .vp-body strong { color: var(--paper); }
+
+/* Outcome strip */
+.outcome-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 40px;
+}
+.oc-cell {
+  background: var(--paper);
+  padding: 24px 22px;
+  text-align: center;
+}
+.oc-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--gold);
+  margin-bottom: 6px;
+  line-height: 1;
+}
+.oc-label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.oc-sub { font-size: 14px; color: var(--muted); }
+
+/* ══════════════════════════════════════
+   TAB 2 — HOW IT WORKS
+══════════════════════════════════════ */
+
+/* Horizon visual */
+.hz-journey {
+  position: relative;
+  margin-bottom: 48px;
+}
+.hz-track {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+.hz-track::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, var(--gold), rgba(176,141,42,0.3));
+  transform: translateY(-50%);
+  z-index: 0;
+}
+.hz-node {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.hz-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--rule);
+  border: 3px solid var(--paper);
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s;
+}
+.hz-node.active .hz-dot {
+  width: 28px; height: 28px;
+  background: var(--gold);
+  box-shadow: 0 0 0 6px rgba(176,141,42,0.15);
+}
+.hz-card-wrap {
+  width: 100%;
+  padding: 0 8px;
+}
+.hz-card {
+  background: var(--cream);
+  padding: 24px 20px;
+  border: 1px solid var(--rule);
+  transition: all 0.3s;
+}
+.hz-node.active .hz-card {
+  background: var(--ink);
+  border-color: var(--gold);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+.hz-card-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.hz-node.active .hz-card-num { color: rgba(247,244,238,0.35); }
+.hz-card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.hz-node.active .hz-card-title { color: var(--paper); }
+.hz-card-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.hz-node.active .hz-card-sub { border-bottom-color: rgba(247,244,238,0.1); }
+.hz-items { display: flex; flex-direction: column; gap: 9px; }
+.hz-item {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.hz-node.active .hz-item { color: rgba(247,244,238,0.65); }
+.hz-item::before { content: '—'; color: var(--rule); flex-shrink: 0; }
+.hz-now-badge {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  margin-bottom: 8px;
+}
+.hz-arrow-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  position: relative;
+  z-index: 1;
+}
+.hz-arrow {
+  font-size: 20px;
+  color: var(--rule);
+  margin-top: -40px;
+}
+
+/* Beachhead */
+.beachhead {
+  padding: 22px 28px;
+  background: var(--gold-lt);
+  border-left: 5px solid var(--gold);
+  font-size: 16px;
+  line-height: 1.75;
+}
+.beachhead .bh-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+/* Agent Pipeline Visual */
+.pipeline-visual {
+  background: var(--ink);
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+.pipeline-visual::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(176,141,42,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(192,50,26,0.04) 0%, transparent 50%);
+}
+.pv-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  margin-bottom: 32px;
+  position: relative;
+}
+.pipeline-flow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  position: relative;
+}
+.pf-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pf-phase-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.pf-agent {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 12px 14px;
+  width: 120px;
+  transition: all 0.2s;
+  cursor: default;
+  position: relative;
+}
+.pf-agent:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.pf-agent-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--paper);
+  margin-bottom: 3px;
+}
+.pf-agent-role {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.4);
+}
+.pf-connector {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  margin-top: 48px;
+}
+.pf-conn-line {
+  width: 24px;
+  height: 2px;
+  background: rgba(255,255,255,0.12);
+  position: relative;
+}
+.pf-conn-line::after {
+  content: '▶';
+  position: absolute;
+  right: -8px;
+  top: -7px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.2);
+}
+.pf-phase-parallel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+.pf-parallel-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-align: center;
+  border: 1px solid rgba(176,141,42,0.3);
+  padding: 4px 8px;
+  margin-bottom: 8px;
+}
+.pf-bracket {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  margin-top: 20px;
+}
+.pf-brace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pf-brace-line {
+  width: 2px;
+  background: rgba(255,255,255,0.1);
+}
+.pf-brace-line.top { height: 60px; }
+.pf-brace-line.bot { height: 60px; }
+.pf-brace-mid {
+  width: 16px;
+  height: 2px;
+  background: rgba(255,255,255,0.15);
+}
+.pf-arrow-right {
+  width: 16px;
+  height: 2px;
+  background: rgba(255,255,255,0.15);
+  position: relative;
+}
+.pf-arrow-right::after {
+  content: '▶';
+  position: absolute;
+  right: -10px;
+  top: -7px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+}
+
+/* Practitioner parallel track */
+.practitioner-track {
+  margin-top: 32px;
+  padding: 24px 28px;
+  background: rgba(176,141,42,0.06);
+  border: 1px solid rgba(176,141,42,0.2);
+  position: relative;
+}
+.practitioner-track::before {
+  content: 'Human in the Loop — Runs in Parallel';
+  position: absolute;
+  top: -11px; left: 20px;
+  background: var(--ink);
+  padding: 0 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.pt-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.pt-node {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+}
+.pt-node-icon {
+  width: 36px; height: 36px;
+  background: rgba(176,141,42,0.15);
+  border: 1px solid rgba(176,141,42,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--gold);
+}
+.pt-node-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.5);
+  line-height: 1.4;
+}
+.pt-arrow {
+  font-size: 14px;
+  color: rgba(247,244,238,0.15);
+  padding: 0 6px;
+  margin-bottom: 16px;
+}
+
+/* Correction Log Flywheel */
+.flywheel-section {
+  background: var(--cream);
+  padding: 40px;
+  border: 1px solid var(--rule);
+  position: relative;
+}
+.flywheel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+.flywheel-visual {
+  position: relative;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Concentric rings */
+.fw-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+}
+.fw-ring-1 { width: 320px; height: 320px; }
+.fw-ring-2 { width: 240px; height: 240px; border-style: dashed; }
+.fw-ring-3 { width: 160px; height: 160px; }
+.fw-center {
+  position: relative;
+  z-index: 10;
+  width: 90px; height: 90px;
+  background: var(--ink);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+}
+.fw-center-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-align: center;
+  line-height: 1.4;
+}
+/* Orbit nodes */
+.fw-node {
+  position: absolute;
+  z-index: 5;
+  text-align: center;
+}
+.fw-node-dot {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 6px;
+  font-size: 18px;
+  border: 2px solid var(--rule);
+  background: var(--paper);
+}
+.fw-node.active .fw-node-dot {
+  background: var(--ink);
+  border-color: var(--gold);
+}
+.fw-node-text {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  max-width: 80px;
+  line-height: 1.4;
+}
+/* Position nodes around the ring */
+.fw-n1 { top: -10px;  left: 50%; transform: translateX(-50%); }
+.fw-n2 { top: 50%;    right: -30px; transform: translateY(-50%); }
+.fw-n3 { bottom: -10px; left: 50%; transform: translateX(-50%); }
+.fw-n4 { top: 50%;    left: -30px; transform: translateY(-50%); }
+/* Curved arrows */
+.fw-arrows {
+  position: absolute;
+  width: 100%; height: 100%;
+  top: 0; left: 0;
+}
+.fw-arrows svg {
+  width: 100%; height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+}
+
+.flywheel-right h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+.flywheel-right p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.flywheel-right p strong { color: var(--ink); font-weight: 600; }
+.fw-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fw-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--paper);
+  border-left: 4px solid var(--rule);
+}
+.fw-step.active { border-left-color: var(--gold); }
+.fw-step-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gold);
+  min-width: 24px;
+  padding-top: 1px;
+}
+.fw-step-text { font-size: 15px; line-height: 1.6; color: var(--muted); }
+.fw-step-text strong { color: var(--ink); font-weight: 600; }
+
+/* Practitioner Interface Mockups */
+.interface-section {
+  background: var(--ink);
+  padding: 48px 40px;
+}
+.is-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  margin-bottom: 32px;
+}
+.interface-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 24px;
+}
+.iface-tab {
+  padding: 8px 18px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: rgba(255,255,255,0.05);
+  color: rgba(247,244,238,0.4);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.2s;
+}
+.iface-tab.active {
+  background: rgba(176,141,42,0.15);
+  color: var(--gold);
+  border-color: rgba(176,141,42,0.3);
+}
+.iface-panel { display: none; }
+.iface-panel.active { display: block; }
+
+/* Mock UI: Deal Dashboard */
+.mock-dashboard {
+  background: #1a1a22;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 0;
+  overflow: hidden;
+}
+.mock-topbar {
+  background: #13131a;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.mock-topbar-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.6);
+}
+.mock-dot { width: 8px; height: 8px; border-radius: 50%; }
+.mock-dot.red { background: #ff5f57; }
+.mock-dot.yellow { background: #febc2e; }
+.mock-dot.green { background: #28c840; }
+.mock-body { padding: 20px; }
+.mock-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.mk-col-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.mk-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.mk-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(247,244,238,0.85);
+  margin-bottom: 4px;
+}
+.mk-card-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  margin-bottom: 8px;
+}
+.mk-rating {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.mk-rating.crit { background: rgba(192,50,26,0.2); color: #ff6b50; }
+.mk-rating.conc { background: rgba(176,141,42,0.2); color: #d4a84b; }
+.mk-rating.prog { background: rgba(39,96,138,0.2); color: #6fb3e0; }
+.mk-progress {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.mk-progress-bar {
+  height: 100%;
+  background: var(--gold);
+  animation: barGrow 1.5s ease both;
+}
+.mk-agents-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.mk-agent-dot {
+  width: 20px; height: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+  font-weight: 500;
+  color: rgba(247,244,238,0.4);
+}
+.mk-agent-dot.done {
+  background: rgba(176,141,42,0.15);
+  border-color: rgba(176,141,42,0.3);
+  color: var(--gold);
+}
+
+/* Mock UI: Section Review */
+.mock-review {
+  background: #1a1a22;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.mock-review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.mrg-left {
+  border-right: 1px solid rgba(255,255,255,0.06);
+  padding: 20px;
+}
+.mrg-right { padding: 20px; }
+.mrg-section-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.35);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.mrg-finding {
+  background: rgba(255,255,255,0.03);
+  border-left: 3px solid rgba(192,50,26,0.5);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.mrg-finding-id {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(192,50,26,0.8);
+  margin-bottom: 4px;
+}
+.mrg-finding-text {
+  font-size: 12px;
+  color: rgba(247,244,238,0.65);
+  line-height: 1.5;
+}
+.mrg-ai-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.mrg-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.25);
+}
+/* Review panel right */
+.review-action-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.35);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.review-btns {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.rbtn {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  color: rgba(247,244,238,0.5);
+  background: rgba(255,255,255,0.03);
+}
+.rbtn.approve {
+  background: rgba(39,160,80,0.12);
+  border-color: rgba(39,160,80,0.3);
+  color: #6fcf97;
+}
+.rbtn.correct {
+  background: rgba(176,141,42,0.12);
+  border-color: rgba(176,141,42,0.3);
+  color: #d4a84b;
+}
+.correction-form {
+  background: rgba(176,141,42,0.06);
+  border: 1px solid rgba(176,141,42,0.15);
+  padding: 12px;
+}
+.cf-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  margin-bottom: 6px;
+}
+.cf-select {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(247,244,238,0.6);
+  padding: 8px 10px;
+  font-size: 12px;
+  margin-bottom: 10px;
+  font-family: 'Inter', sans-serif;
+}
+.cf-textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(247,244,238,0.6);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  resize: none;
+  height: 64px;
+  margin-bottom: 10px;
+}
+.cf-submit {
+  width: 100%;
+  padding: 9px;
+  background: rgba(176,141,42,0.2);
+  border: 1px solid rgba(176,141,42,0.4);
+  color: var(--gold);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Mock UI: Calibration */
+.mock-calibration {
+  background: #1a1a22;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 20px;
+}
+.calib-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.calib-metric {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 16px 14px;
+  text-align: center;
+}
+.calib-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--paper);
+  margin-bottom: 4px;
+}
+.calib-val.gold { color: var(--gold); }
+.calib-val.green { color: #6fcf97; }
+.calib-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+}
+.calib-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.calib-bar-section { }
+.cbs-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(247,244,238,0.3);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.cbs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.cbs-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(247,244,238,0.5);
+  min-width: 60px;
+}
+.cbs-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.cbs-fill {
+  height: 100%;
+  background: var(--gold);
+}
+.cbs-fill.green { background: #6fcf97; }
+.cbs-fill.amber { background: #d4a84b; }
+.cbs-pct {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(247,244,238,0.4);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* ── FOOTER ── */
+.footer {
+  padding: 24px 72px;
+  border-top: 3px double var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--paper);
+}
+.foot-l {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.9;
+}
+.foot-r {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── AGENT ACCORDION (Tab 4) ── */
+.ag-item { border:1px solid var(--rule); overflow:hidden; margin-bottom:2px; }
+.ag-hdr {
+  display:grid; grid-template-columns:56px 170px 1fr auto;
+  align-items:center; gap:20px; padding:22px 28px;
+  cursor:pointer; background:var(--paper); transition:background 0.18s; user-select:none;
+}
+.ag-hdr:hover { background:var(--cream); }
+.ag-hdr.open { background:var(--ink); }
+.ag-n { font-family:'DM Mono',monospace; font-size:13px; font-weight:300; color:var(--rule); }
+.ag-hdr.open .ag-n { color:rgba(247,244,238,0.22); }
+.ag-name { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; }
+.ag-hdr.open .ag-name { color:var(--paper); }
+.ag-role { font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+.ag-hdr.open .ag-role { color:rgba(247,244,238,0.42); }
+.ag-verdict { font-size:15px; color:var(--muted); font-style:italic; }
+.ag-hdr.open .ag-verdict { color:rgba(247,244,238,0.62); }
+.ag-tog { font-size:24px; color:var(--muted); transition:transform 0.18s; line-height:1; flex-shrink:0; }
+.ag-hdr.open .ag-tog { color:var(--paper); transform:rotate(45deg); }
+.ag-body { display:none; padding:36px 36px 36px 254px; background:var(--cream); border-top:1px solid var(--rule); }
+.ag-body.open { display:block; }
+.fb { margin-bottom:22px; padding:22px 24px; background:var(--paper); border-left:5px solid var(--rule); }
+.fb.crit { border-color:var(--crit); }
+.fb.conc { border-color:var(--conc); }
+.fb.combo { border-color:var(--ink); }
+.fb-tag { display:inline-block; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; padding:4px 12px; margin-bottom:12px; }
+.fb-tag.crit { background:var(--crit); color:white; }
+.fb-tag.conc { background:var(--conc); color:white; }
+.fb-tag.combo { background:var(--ink); color:var(--paper); }
+.fb h4 { font-size:17px; font-weight:600; margin-bottom:10px; }
+.fb p { font-size:16px; line-height:1.8; color:var(--muted); }
+.fb p strong { color:var(--ink); font-weight:600; }
+.ag-footer { display:flex; align-items:center; gap:14px; margin-top:18px; padding-top:18px; border-top:1px solid var(--rule); }
+.ag-foot-label { font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+.ag-foot-val { font-family:'Playfair Display',serif; font-size:19px; font-weight:700; }
+.ag-foot-val.crit { color:var(--crit); }
+.ag-foot-val.conc { color:var(--conc); }
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(20px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+.tab-panel.active > * {
+  animation: fadeUp 0.5s ease both;
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<div class="masthead">
+  <div class="mh-side">Prepared for Crosslake Technologies<br>Confidential — Not for Distribution</div>
+  <div class="mh-center">
+    <h1>Agentic TDD Practice</h1>
+    <div class="tagline">A New Model for Technology Due Diligence · February 2026</div>
+  </div>
+  <div class="mh-side right">First Engagement: Veeva Systems<br>Public Signals · 72-Hour Turnaround</div>
+</div>
+
+<!-- TAB NAV -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('opportunity', this)">
+    <span class="tab-num">01</span> The Opportunity
+  </button>
+  <button class="tab-btn" onclick="switchTab('how', this)">
+    <span class="tab-num">02</span> How It Works
+  </button>
+  <button class="tab-btn" onclick="switchTab('poc', this)">
+    <span class="tab-num">03</span> The Engagement <span class="tab-soon">Veeva</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('team', this)">
+    <span class="tab-num">04</span> The AI Staff Team
+  </button>
+  <button class="tab-btn" onclick="switchTab('output', this)">
+    <span class="tab-num">05</span> The Assessment Output
+  </button>
+</nav>
+
+
+<!-- ══════ TAB 1: THE OPPORTUNITY ══════ -->
+<div id="tab-opportunity" class="tab-panel active">
+
+  <div class="sec">
+    <div class="sec-label">The Market Opportunity</div>
+    <div class="opp-hero">
+      <div class="opp-hero-left">
+        <h2>Crosslake's expertise can now serve <em>every deal</em> — not just the ones that fit the calendar.</h2>
+        <p>Technology due diligence today is built around the practitioner — expert by expert, engagement by engagement. Crosslake has built an exceptional practice on this model, completing <strong>6,000+ engagements</strong> and developing deep pattern recognition across every major tech vertical.</p>
+        <p>The next stage of growth is about <strong>multiplying that expertise at scale</strong>. An agentic AI workforce handles the systematic analysis — data gathering, cross-referencing, pattern matching, structured documentation — while Crosslake's practitioners and partners focus on what they do best: judgment, client relationships, and deal structuring.</p>
+        <p>The result is a practice that can serve more deals, faster, at lower cost — and that gets <strong>smarter with every engagement</strong> through a proprietary signal corpus that compounds over time.</p>
+      </div>
+      <div>
+        <div class="market-visual">
+          <div class="mv-label">The Scale Opportunity</div>
+          <div class="mv-stats">
+            <div class="mv-stat">
+              <div class="mv-stat-num">6,000+</div>
+              <div class="mv-bar-wrap"><div class="mv-bar" style="width:100%"></div></div>
+              <div class="mv-stat-label"><strong>Past engagements</strong>Signal corpus waiting to be activated</div>
+            </div>
+            <div class="mv-stat">
+              <div class="mv-stat-num gold">72hrs</div>
+              <div class="mv-bar-wrap"><div class="mv-bar" style="width:15%"></div></div>
+              <div class="mv-stat-label"><strong>Pre-LOI turnaround</strong>vs. 2–4 weeks today</div>
+            </div>
+            <div class="mv-stat">
+              <div class="mv-stat-num gold">3×</div>
+              <div class="mv-bar-wrap"><div class="mv-bar" style="width:60%"></div></div>
+              <div class="mv-stat-label"><strong>Practitioner leverage</strong>Run multiple engagements simultaneously</div>
+            </div>
+            <div class="mv-stat">
+              <div class="mv-stat-num">$5–15K</div>
+              <div class="mv-bar-wrap"><div class="mv-bar accent" style="width:20%"></div></div>
+              <div class="mv-stat-label"><strong>Pre-LOI price point</strong>A market currently underserved</div>
+            </div>
+          </div>
+        </div>
+        <div class="vision-full" style="margin-top:12px;">
+          <div class="vf-label">The Vision</div>
+          <p class="vf-text">An agentic AI workforce — invisible to PE clients, delivered under the Crosslake brand — that runs structured tech due diligence autonomously, with Crosslake's partners reviewing and approving. More deals served, faster delivery, and a proprietary intelligence moat that grows with every engagement.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Three Ways This Creates Value</div>
+    <div class="vp-row">
+      <div class="vp-card">
+        <div class="vp-icon">⚡</div>
+        <div class="vp-seq">First</div>
+        <div class="vp-title">The Intake &amp; Baseline Engine</div>
+        <div class="vp-hook">Fastest to deploy · Immediate win</div>
+        <div class="vp-body">Every engagement starts with the same systematic work — collecting documentation, reviewing repositories, scanning for signals, structuring findings. <strong>AI staff own this entirely.</strong> A standardized intake workflow ingests whatever a target provides — codebase access, architecture docs, vendor contracts, org charts, management questionnaires — and produces a structured first-pass assessment benchmarked against industry data. What used to take a practitioner a week of oriented reading now takes hours, freeing them for the work that requires human judgment.</div>
+      </div>
+      <div class="vp-card dark">
+        <div class="vp-icon" style="background:rgba(255,255,255,0.06)">✦</div>
+        <div class="vp-seq">Second</div>
+        <div class="vp-title">The Practitioner Multiplier</div>
+        <div class="vp-hook">Protects relationships · Expands capacity</div>
+        <div class="vp-body">Rather than changing the practitioner model, AI staff become what each practitioner gets paired with. <strong>A practitioner who previously handled one engagement at a time can now run two or three simultaneously</strong> — AI handles synthesis, documentation, and cross-referencing while the human handles judgment calls and client-facing communication. Practitioners become more valuable, more available, and more central to every engagement — with AI amplifying their impact rather than replacing their role.</div>
+      </div>
+      <div class="vp-card">
+        <div class="vp-icon">◈</div>
+        <div class="vp-seq">Third</div>
+        <div class="vp-title">The Signal Intelligence Layer</div>
+        <div class="vp-hook">Highest value · Defensible moat</div>
+        <div class="vp-body">Crosslake's 6,000+ past engagements contain pattern intelligence that no competitor can access. <strong>An AI system that extracts structured signals from historical deal data</strong> — what tech stack combinations correlated with integration challenges, what team configurations flagged post-close underperformance, what architectural patterns were systematically under-weighted — becomes a proprietary benchmark engine built from real deal experience. Every new engagement feeds it. Over time, this is the asset that defines the franchise value.</div>
+      </div>
+    </div>
+
+    <div class="outcome-strip">
+      <div class="oc-cell">
+        <div class="oc-num">72hrs</div>
+        <div class="oc-label">Pre-LOI delivery</div>
+        <div class="oc-sub">From deal submission to IC-ready report</div>
+      </div>
+      <div class="oc-cell">
+        <div class="oc-num">3×</div>
+        <div class="oc-label">Practitioner leverage</div>
+        <div class="oc-sub">Simultaneous engagements per practitioner</div>
+      </div>
+      <div class="oc-cell">
+        <div class="oc-num">8</div>
+        <div class="oc-label">AI staff specialists</div>
+        <div class="oc-sub">Each with a defined domain and output schema</div>
+      </div>
+      <div class="oc-cell">
+        <div class="oc-num">∞</div>
+        <div class="oc-label">Corpus compounding</div>
+        <div class="oc-sub">Every engagement improves the next</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab-opportunity -->
+
+
+<!-- ══════ TAB 2: HOW IT WORKS ══════ -->
+<div id="tab-how" class="tab-panel">
+
+  <!-- Three Horizons -->
+  <div class="sec">
+    <div class="sec-label">The Three-Horizon Maturity Model</div>
+
+    <div style="display:flex; align-items:flex-start; gap:32px; margin-bottom:32px;">
+      <div style="flex:1">
+        <div class="hz-track">
+          <div class="hz-node active">
+            <div style="text-align:center; margin-bottom:12px;">
+              <div class="hz-now-badge">Where We Are</div>
+            </div>
+            <div class="hz-dot"></div>
+            <div class="hz-card-wrap">
+              <div class="hz-card">
+                <div class="hz-card-num">Horizon 1</div>
+                <div class="hz-card-title">Augmentation</div>
+                <div class="hz-card-sub">AI staff + practitioner together</div>
+                <div class="hz-items">
+                  <div class="hz-item">AI staff run full pre-LOI assessment automatically</div>
+                  <div class="hz-item">Practitioner reviews in parallel — 1–2 days not 5–7</div>
+                  <div class="hz-item">Correction log captures every calibration input</div>
+                  <div class="hz-item">Crosslake partner approves and delivers under brand</div>
+                  <div class="hz-item">Trust built engagement by engagement</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hz-arrow-node">
+            <div class="hz-arrow">→</div>
+          </div>
+
+          <div class="hz-node">
+            <div style="height:38px;"></div>
+            <div class="hz-dot"></div>
+            <div class="hz-card-wrap">
+              <div class="hz-card">
+                <div class="hz-card-num">Horizon 2</div>
+                <div class="hz-card-title">Automation</div>
+                <div class="hz-card-sub">AI staff own the workflow</div>
+                <div class="hz-items">
+                  <div class="hz-item">No practitioner involvement in standard cases</div>
+                  <div class="hz-item">Partner reviews final report — 30–45 minutes</div>
+                  <div class="hz-item">Triggered when domain approval rates exceed 85%</div>
+                  <div class="hz-item">Correction log data drives continuous improvement</div>
+                  <div class="hz-item">Practitioner freed for higher-value advisory work</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hz-arrow-node">
+            <div class="hz-arrow">→</div>
+          </div>
+
+          <div class="hz-node">
+            <div style="height:38px;"></div>
+            <div class="hz-dot"></div>
+            <div class="hz-card-wrap">
+              <div class="hz-card">
+                <div class="hz-card-num">Horizon 3</div>
+                <div class="hz-card-title">Autonomous</div>
+                <div class="hz-card-sub">Partner sign-off only</div>
+                <div class="hz-items">
+                  <div class="hz-item">AI staff run full engagement end-to-end</div>
+                  <div class="hz-item">Partner review — 10–15 minutes light sign-off</div>
+                  <div class="hz-item">Pre-LOI screening as a push-button product</div>
+                  <div class="hz-item">Partner time fully reserved for deal advisory</div>
+                  <div class="hz-item">Productized SKU — defined price and output</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beachhead">
+      <div class="bh-label">Beachhead: Pre-LOI Screening</div>
+      Starting with pre-LOI screening opens a market that currently goes underserved — the deals where PE firms want a technical view before committing to full diligence. Every engagement at this stage feeds signals into the corpus, so the intelligence layer strengthens with each deal run, regardless of whether it proceeds to full diligence.
+    </div>
+  </div>
+
+  <!-- Agent Pipeline -->
+  <div class="sec" style="padding-bottom:0; border-bottom:none;">
+    <div class="sec-label">The Agent Workflow</div>
+  </div>
+  <div class="interface-section">
+    <div class="pv-label">Eight AI Staff · Three Phases · One Structured Output</div>
+
+    <div class="pipeline-flow" style="align-items:flex-start; gap:0; overflow-x:auto; padding-bottom:20px;">
+
+      <!-- Phase 1 -->
+      <div class="pf-phase">
+        <div class="pf-phase-label">Phase 1 · Sequential · Hours 0–2</div>
+        <div class="pf-agent">
+          <div class="pf-agent-name">Alex</div>
+          <div class="pf-agent-role">Intake &amp; Profile</div>
+        </div>
+        <div class="pf-agent">
+          <div class="pf-agent-name">Morgan</div>
+          <div class="pf-agent-role">Public Signals</div>
+        </div>
+      </div>
+
+      <div class="pf-connector">
+        <div class="pf-conn-line"></div>
+      </div>
+
+      <!-- Phase 2 - parallel -->
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="pf-parallel-label">Phase 2 · Parallel · Hours 2–36</div>
+        <div style="display:flex; gap:8px;">
+          <div class="pf-phase-parallel">
+            <div class="pf-agent">
+              <div class="pf-agent-name">Jordan</div>
+              <div class="pf-agent-role">Repository</div>
+            </div>
+          </div>
+          <div class="pf-phase-parallel">
+            <div class="pf-agent">
+              <div class="pf-agent-name">Riley</div>
+              <div class="pf-agent-role">Security</div>
+            </div>
+          </div>
+          <div class="pf-phase-parallel">
+            <div class="pf-agent">
+              <div class="pf-agent-name">Casey</div>
+              <div class="pf-agent-role">Code Quality</div>
+            </div>
+          </div>
+          <div class="pf-phase-parallel">
+            <div class="pf-agent">
+              <div class="pf-agent-name">Taylor</div>
+              <div class="pf-agent-role">Infrastructure</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pf-connector">
+        <div class="pf-conn-line"></div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="pf-phase">
+        <div class="pf-phase-label">Phase 3 · Sequential · Hours 36–60</div>
+        <div class="pf-agent">
+          <div class="pf-agent-name">Drew</div>
+          <div class="pf-agent-role">Benchmarking</div>
+        </div>
+        <div class="pf-agent">
+          <div class="pf-agent-name">Sam</div>
+          <div class="pf-agent-role">Synthesis</div>
+        </div>
+      </div>
+
+      <div class="pf-connector">
+        <div class="pf-conn-line"></div>
+      </div>
+
+      <!-- Output -->
+      <div class="pf-phase">
+        <div class="pf-phase-label">Output · Hours 60–72</div>
+        <div class="pf-agent" style="border-color:rgba(176,141,42,0.4); background:rgba(176,141,42,0.08);">
+          <div class="pf-agent-name" style="color:var(--gold)">Report</div>
+          <div class="pf-agent-role" style="color:rgba(176,141,42,0.6)">IC-Ready</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Practitioner parallel track -->
+    <div class="practitioner-track">
+      <div class="pt-flow">
+        <div class="pt-node">
+          <div class="pt-node-icon">CP</div>
+          <div class="pt-node-label">Partner<br>Submits</div>
+        </div>
+        <div class="pt-arrow">→</div>
+        <div class="pt-node">
+          <div class="pt-node-icon">PR</div>
+          <div class="pt-node-label">Practitioner<br>Reviews Drafts</div>
+        </div>
+        <div class="pt-arrow">→</div>
+        <div class="pt-node">
+          <div class="pt-node-icon">✓</div>
+          <div class="pt-node-label">Corrections<br>Logged</div>
+        </div>
+        <div class="pt-arrow">→</div>
+        <div class="pt-node">
+          <div class="pt-node-icon">↺</div>
+          <div class="pt-node-label">AI Improves<br>Next Run</div>
+        </div>
+        <div class="pt-arrow">→</div>
+        <div class="pt-node">
+          <div class="pt-node-icon">CP</div>
+          <div class="pt-node-label">Partner<br>Approves</div>
+        </div>
+        <div class="pt-arrow">→</div>
+        <div class="pt-node">
+          <div class="pt-node-icon" style="background:rgba(176,141,42,0.2); border-color:rgba(176,141,42,0.5); color:var(--gold)">✦</div>
+          <div class="pt-node-label">Delivers to<br>PE Client</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Correction Log Flywheel -->
+  <div class="sec">
+    <div class="sec-label">The Correction Log — The Learning Engine</div>
+    <div class="flywheel-section">
+      <div class="flywheel-grid">
+        <div class="flywheel-visual">
+          <div class="fw-ring fw-ring-1"></div>
+          <div class="fw-ring fw-ring-2"></div>
+          <div class="fw-ring fw-ring-3"></div>
+          <div class="fw-center">
+            <div class="fw-center-label">Correction<br>Log</div>
+          </div>
+          <!-- SVG curved arrows -->
+          <div class="fw-arrows">
+            <svg viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 180 40 A 140 140 0 0 1 320 180" stroke="rgba(176,141,42,0.3)" stroke-width="1.5" stroke-dasharray="4 4" fill="none" marker-end="url(#arr)"/>
+              <path d="M 320 180 A 140 140 0 0 1 180 320" stroke="rgba(176,141,42,0.2)" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+              <path d="M 180 320 A 140 140 0 0 1 40 180" stroke="rgba(176,141,42,0.2)" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+              <path d="M 40 180 A 140 140 0 0 1 180 40" stroke="rgba(176,141,42,0.2)" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+              <defs>
+                <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L6,3 z" fill="rgba(176,141,42,0.5)"/>
+                </marker>
+              </defs>
+            </svg>
+          </div>
+          <!-- Orbit nodes -->
+          <div class="fw-node active fw-n1">
+            <div class="fw-node-dot">🤖</div>
+            <div class="fw-node-text">AI Staff<br>Produce Output</div>
+          </div>
+          <div class="fw-node fw-n2">
+            <div class="fw-node-dot">👤</div>
+            <div class="fw-node-text">Practitioner<br>Reviews</div>
+          </div>
+          <div class="fw-node fw-n3">
+            <div class="fw-node-dot">📊</div>
+            <div class="fw-node-text">Approval Rate<br>Rises</div>
+          </div>
+          <div class="fw-node fw-n4">
+            <div class="fw-node-dot">✏️</div>
+            <div class="fw-node-text">Prompt<br>Improves</div>
+          </div>
+        </div>
+
+        <div class="flywheel-right">
+          <h3>Every correction makes the system smarter.</h3>
+          <p>The correction log is the mechanism that transforms Horizon 1 into Horizon 2. <strong>Every time a practitioner adjusts an AI finding, the correction is structured, categorized, and stored.</strong> Over time, patterns emerge — which agents need calibration, which context signals are missing from intake, which benchmark comparisons are off.</p>
+          <p>This is not just quality control. It is a <strong>proprietary training signal</strong> that no competitor can replicate without running the same engagements.</p>
+          <div class="fw-steps">
+            <div class="fw-step active">
+              <div class="fw-step-num">01</div>
+              <div class="fw-step-text"><strong>AI staff produce structured output</strong> with confidence levels and flagged items requiring human review</div>
+            </div>
+            <div class="fw-step active">
+              <div class="fw-step-num">02</div>
+              <div class="fw-step-text"><strong>Practitioner reviews section by section</strong> — approves, adjusts, or adds context via structured correction form</div>
+            </div>
+            <div class="fw-step active">
+              <div class="fw-step-num">03</div>
+              <div class="fw-step-text"><strong>Every correction is categorized</strong> — wrong benchmark, missing context, judgment call, access limitation</div>
+            </div>
+            <div class="fw-step active">
+              <div class="fw-step-num">04</div>
+              <div class="fw-step-text"><strong>Patterns aggregate into calibration data</strong> — top correction types drive targeted prompt improvement each month</div>
+            </div>
+            <div class="fw-step active">
+              <div class="fw-step-num">05</div>
+              <div class="fw-step-text"><strong>Approval rates rise domain by domain</strong> — when a domain hits 85%, it graduates to Horizon 2 autonomy</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Practitioner Interface Mockups -->
+  <div class="sec" style="padding-bottom:0; border-bottom: none;">
+    <div class="sec-label">The Practitioner Workbench</div>
+    <p style="color:var(--muted); font-size:17px; max-width:700px; margin-bottom:32px; line-height:1.8;">The practitioner workbench is where Horizon 1 lives. Five integrated components give practitioners full visibility and control over every AI staff output — while the system learns from every interaction.</p>
+  </div>
+  <div style="background:var(--ink); padding: 0 40px 40px;">
+    <div class="interface-tabs" style="padding-top:32px;">
+      <div class="iface-tab active" onclick="switchIface('dashboard', this)">Deal Dashboard</div>
+      <div class="iface-tab" onclick="switchIface('review', this)">Section Review</div>
+      <div class="iface-tab" onclick="switchIface('calibration', this)">Calibration</div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="iface-dashboard" class="iface-panel active">
+      <div class="mock-dashboard">
+        <div class="mock-topbar">
+          <div class="mock-dot red"></div>
+          <div class="mock-dot yellow"></div>
+          <div class="mock-dot green"></div>
+          <div style="flex:1; margin-left:8px;">
+            <div class="mock-topbar-title">Crosslake TDD Practice — Deal Queue</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; color:rgba(247,244,238,0.3);">4 active · 2 pending review</div>
+        </div>
+        <div class="mock-body">
+          <div class="mock-kanban">
+            <div>
+              <div class="mk-col-title">In Progress</div>
+              <div class="mk-card">
+                <div class="mk-card-name">Veeva Systems</div>
+                <div class="mk-card-meta">Life Sciences SaaS · $30.7B</div>
+                <div class="mk-rating crit">Critical</div>
+                <div class="mk-agents-row">
+                  <div class="mk-agent-dot done">A</div>
+                  <div class="mk-agent-dot done">M</div>
+                  <div class="mk-agent-dot done">J</div>
+                  <div class="mk-agent-dot done">R</div>
+                  <div class="mk-agent-dot done">C</div>
+                  <div class="mk-agent-dot done">T</div>
+                  <div class="mk-agent-dot done">D</div>
+                  <div class="mk-agent-dot done">S</div>
+                </div>
+                <div class="mk-progress"><div class="mk-progress-bar" style="width:100%"></div></div>
+              </div>
+              <div class="mk-card">
+                <div class="mk-card-name">HealthStream Inc</div>
+                <div class="mk-card-meta">Healthcare IT · $420M</div>
+                <div class="mk-rating prog">In Progress</div>
+                <div class="mk-agents-row">
+                  <div class="mk-agent-dot done">A</div>
+                  <div class="mk-agent-dot done">M</div>
+                  <div class="mk-agent-dot done">J</div>
+                  <div class="mk-agent-dot">R</div>
+                  <div class="mk-agent-dot">C</div>
+                  <div class="mk-agent-dot">T</div>
+                  <div class="mk-agent-dot">D</div>
+                  <div class="mk-agent-dot">S</div>
+                </div>
+                <div class="mk-progress"><div class="mk-progress-bar" style="width:38%"></div></div>
+              </div>
+            </div>
+            <div>
+              <div class="mk-col-title">Awaiting Practitioner Review</div>
+              <div class="mk-card" style="border-color:rgba(176,141,42,0.3);">
+                <div class="mk-card-name">Palantir Tech</div>
+                <div class="mk-card-meta">Defence Analytics · $18.2B</div>
+                <div class="mk-rating conc">Concerning</div>
+                <div style="margin-top:10px; font-family:'DM Mono',monospace; font-size:9px; color:rgba(176,141,42,0.7);">Ready for review · 3h ago</div>
+              </div>
+            </div>
+            <div>
+              <div class="mk-col-title">Partner Review</div>
+              <div class="mk-card">
+                <div class="mk-card-name">Evolent Health</div>
+                <div class="mk-card-meta">Value-Based Care · $2.1B</div>
+                <div class="mk-rating conc">Concerning</div>
+                <div style="margin-top:10px; font-family:'DM Mono',monospace; font-size:9px; color:rgba(247,244,238,0.3);">Practitioner approved · 1h ago</div>
+              </div>
+            </div>
+            <div>
+              <div class="mk-col-title">Delivered</div>
+              <div class="mk-card">
+                <div class="mk-card-name">Cotiviti Holdings</div>
+                <div class="mk-card-meta">Healthcare Analytics</div>
+                <div class="mk-rating crit">Critical</div>
+                <div style="margin-top:10px; font-family:'DM Mono',monospace; font-size:9px; color:rgba(247,244,238,0.3);">Delivered to PE client · Yesterday</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Review -->
+    <div id="iface-review" class="iface-panel">
+      <div class="mock-review">
+        <div class="mock-topbar">
+          <div class="mock-dot red"></div>
+          <div class="mock-dot yellow"></div>
+          <div class="mock-dot green"></div>
+          <div style="flex:1; margin-left:8px;">
+            <div class="mock-topbar-title">Veeva Systems — Section Review · Jordan: Repository Analysis</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; color:rgba(247,244,238,0.3);">4 of 12 findings reviewed</div>
+        </div>
+        <div class="mock-review-grid">
+          <div class="mrg-left">
+            <div class="mrg-section-title">AI Staff Output — Jordan</div>
+            <div class="mrg-finding">
+              <div class="mrg-finding-id">T1-F1 · CRITICAL</div>
+              <div class="mrg-finding-text">vault-api-library: Bus factor 2 identified. Only 4 visible contributors across 50 commits. Zero test folders. Industry norm at this scale: 10–30 contributors.</div>
+              <div class="mrg-ai-rating">
+                <div class="mrg-label">AI Rating:</div>
+                <div class="mk-rating crit" style="font-size:8px;">Critical</div>
+                <div class="mrg-label" style="margin-left:8px;">Confidence:</div>
+                <div style="font-family:'DM Mono',monospace; font-size:9px; color:rgba(247,244,238,0.4);">HIGH</div>
+              </div>
+            </div>
+            <div class="mrg-finding" style="border-left-color: rgba(176,141,42,0.5); opacity:0.7;">
+              <div class="mrg-finding-id">T1-F2 · CRITICAL</div>
+              <div class="mrg-finding-text">vault-data-tools: Zero contributors, 3 years dormant. Sits at Data Cloud boundary. No archival action taken. Acquirer inherits unowned technical liabilities.</div>
+              <div class="mrg-ai-rating">
+                <div class="mrg-label">AI Rating:</div>
+                <div class="mk-rating crit" style="font-size:8px;">Critical</div>
+              </div>
+            </div>
+            <div class="mrg-finding" style="border-left-color: rgba(255,255,255,0.1); opacity:0.4;">
+              <div class="mrg-finding-id">T1-F3 · CONCERNING</div>
+              <div class="mrg-finding-text">Contributor anonymity policy: cannot distinguish thin staffing from deliberate information management.</div>
+            </div>
+          </div>
+          <div class="mrg-right">
+            <div class="review-action-title">Practitioner Review — T1-F1</div>
+            <div class="review-btns">
+              <div class="rbtn approve">✓ Approve</div>
+              <div class="rbtn correct">✎ Correct</div>
+              <div class="rbtn">⚑ Escalate</div>
+            </div>
+            <div class="correction-form">
+              <div class="cf-label">Correction Type</div>
+              <select class="cf-select">
+                <option>— Select correction type —</option>
+                <option selected>Missing context</option>
+                <option>Wrong benchmark used</option>
+                <option>Judgment call needed</option>
+                <option>Access limitation</option>
+                <option>Data quality issue</option>
+              </select>
+              <div class="cf-label">Missing Context Signal</div>
+              <select class="cf-select">
+                <option selected>Leadership change recently</option>
+                <option>Organizational restructure</option>
+                <option>Trajectory direction improving</option>
+                <option>Funding event impact</option>
+              </select>
+              <div class="cf-label">Practitioner Note</div>
+              <textarea class="cf-textarea" placeholder="Add context for this correction...">New VP Eng joined Q3 2025 — contributor numbers may not reflect recent hiring. Worth confirming in private diligence.</textarea>
+              <button class="cf-submit">Log Correction &amp; Continue →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calibration -->
+    <div id="iface-calibration" class="iface-panel">
+      <div class="mock-calibration">
+        <div class="mock-topbar" style="margin:-20px -20px 20px; padding:12px 20px;">
+          <div class="mock-dot red"></div>
+          <div class="mock-dot yellow"></div>
+          <div class="mock-dot green"></div>
+          <div style="flex:1; margin-left:8px;">
+            <div class="mock-topbar-title">Calibration Dashboard — Last 30 Days · 3 Engagements</div>
+          </div>
+        </div>
+        <div class="calib-grid">
+          <div class="calib-metric">
+            <div class="calib-val green">84%</div>
+            <div class="calib-lbl">Overall Approval Rate</div>
+          </div>
+          <div class="calib-metric">
+            <div class="calib-val gold">23</div>
+            <div class="calib-lbl">Total Corrections Logged</div>
+          </div>
+          <div class="calib-metric">
+            <div class="calib-val">4.2 min</div>
+            <div class="calib-lbl">Avg Review Time / Finding</div>
+          </div>
+          <div class="calib-metric">
+            <div class="calib-val green">↑ H2</div>
+            <div class="calib-lbl">3 Domains Near Threshold</div>
+          </div>
+        </div>
+        <div class="calib-bars">
+          <div class="calib-bar-section">
+            <div class="cbs-title">Approval Rate by Domain</div>
+            <div class="cbs-row">
+              <div class="cbs-name">Repository</div>
+              <div class="cbs-track"><div class="cbs-fill green" style="width:91%"></div></div>
+              <div class="cbs-pct">91%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">Security</div>
+              <div class="cbs-track"><div class="cbs-fill green" style="width:88%"></div></div>
+              <div class="cbs-pct">88%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">Infra</div>
+              <div class="cbs-track"><div class="cbs-fill amber" style="width:82%"></div></div>
+              <div class="cbs-pct">82%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">SDLC</div>
+              <div class="cbs-track"><div class="cbs-fill amber" style="width:79%"></div></div>
+              <div class="cbs-pct">79%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">Org Health</div>
+              <div class="cbs-track"><div class="cbs-fill" style="width:74%"></div></div>
+              <div class="cbs-pct">74%</div>
+            </div>
+          </div>
+          <div class="calib-bar-section">
+            <div class="cbs-title">Top Correction Types</div>
+            <div class="cbs-row">
+              <div class="cbs-name">Missing ctx</div>
+              <div class="cbs-track"><div class="cbs-fill amber" style="width:52%"></div></div>
+              <div class="cbs-pct">52%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">Judgment</div>
+              <div class="cbs-track"><div class="cbs-fill amber" style="width:26%"></div></div>
+              <div class="cbs-pct">26%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">Benchmark</div>
+              <div class="cbs-track"><div class="cbs-fill" style="width:13%"></div></div>
+              <div class="cbs-pct">13%</div>
+            </div>
+            <div class="cbs-row">
+              <div class="cbs-name">Access</div>
+              <div class="cbs-track"><div class="cbs-fill" style="width:9%"></div></div>
+              <div class="cbs-pct">9%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /interface section dark -->
+
+
+
+</div><!-- /tab-how -->
+
+
+<!-- ══════ TAB 3: THE ENGAGEMENT ══════ -->
+<div id="tab-poc" class="tab-panel">
+
+  <!-- Hero -->
+  <div class="sec">
+    <div class="sec-label">The First Engagement</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:72px; align-items:start;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif; font-size:36px; font-weight:800; line-height:1.15; margin-bottom:24px; letter-spacing:-0.02em;">Veeva Systems — a $30.7B life sciences SaaS platform assessed from <em style="font-style:italic; color:var(--gold)">public signals alone.</em></h2>
+        <p style="font-size:17px; line-height:1.8; color:var(--muted); margin-bottom:18px;">To demonstrate the Agentic TDD Practice on a target PE firms would immediately recognize, we selected Veeva Systems — the dominant vertical SaaS platform for life sciences, with $3.08B in revenue, 7,291 employees, and a $30.7B market cap.</p>
+        <p style="font-size:17px; line-height:1.8; color:var(--muted); margin-bottom:18px;">Eight AI staff ran the full pre-LOI workflow using only publicly available data sources. <strong style="color:var(--ink);">No private repository access. No internal documentation. No Crosslake corpus.</strong> The engagement proves the system works before any proprietary data is available.</p>
+        <p style="font-size:17px; line-height:1.8; color:var(--muted);">The result is a complete IC-ready assessment with domain ratings, compound risk analysis, three deal scenarios with cost estimates, and 15 prioritized diligence questions — in under 72 hours.</p>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="background:var(--ink); padding:28px 28px 20px;">
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.16em; text-transform:uppercase; color:rgba(247,244,238,0.35); margin-bottom:20px;">Target Profile</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid rgba(255,255,255,0.07);">
+            <div style="padding:14px 16px; border-right:1px solid rgba(255,255,255,0.07); border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Company</div>
+              <div style="font-size:15px; font-weight:600; color:var(--paper);">Veeva Systems</div>
+            </div>
+            <div style="padding:14px 16px; border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Market Cap</div>
+              <div style="font-size:15px; font-weight:600; color:var(--paper);">$30.7B</div>
+            </div>
+            <div style="padding:14px 16px; border-right:1px solid rgba(255,255,255,0.07); border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Revenue TTM</div>
+              <div style="font-size:15px; font-weight:600; color:var(--paper);">$3.08B</div>
+            </div>
+            <div style="padding:14px 16px; border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Employees</div>
+              <div style="font-size:15px; font-weight:600; color:var(--paper);">7,291</div>
+            </div>
+            <div style="padding:14px 16px; border-right:1px solid rgba(255,255,255,0.07); border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Sector</div>
+              <div style="font-size:15px; font-weight:600; color:var(--paper);">Life Sciences SaaS</div>
+            </div>
+            <div style="padding:14px 16px; border-bottom:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Revenue Growth</div>
+              <div style="font-size:15px; font-weight:600; color:var(--gold);">30% TTM</div>
+            </div>
+            <div style="padding:14px 16px; border-right:1px solid rgba(255,255,255,0.07);">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Data Basis</div>
+              <div style="font-size:15px; font-weight:600; color:var(--paper);">Public Only</div>
+            </div>
+            <div style="padding:14px 16px;">
+              <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.3); margin-bottom:4px;">Overall Rating</div>
+              <div style="font-size:15px; font-weight:600; color:#ff6b50;">CRITICAL</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule);">
+          <div style="background:var(--cream); padding:16px 14px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:28px; font-weight:800; color:var(--gold);">8</div>
+            <div style="font-size:13px; font-weight:600; margin-bottom:2px;">AI Staff</div>
+            <div style="font-size:12px; color:var(--muted);">Deployed</div>
+          </div>
+          <div style="background:var(--cream); padding:16px 14px; text-align:center; border-left:1px solid var(--rule); border-right:1px solid var(--rule);">
+            <div style="font-family:'Playfair Display',serif; font-size:28px; font-weight:800; color:var(--gold);">72h</div>
+            <div style="font-size:13px; font-weight:600; margin-bottom:2px;">Turnaround</div>
+            <div style="font-size:12px; color:var(--muted);">End-to-end</div>
+          </div>
+          <div style="background:var(--cream); padding:16px 14px; text-align:center;">
+            <div style="font-family:'Playfair Display',serif; font-size:28px; font-weight:800; color:var(--accent);">5</div>
+            <div style="font-size:13px; font-weight:600; margin-bottom:2px;">CRITICAL</div>
+            <div style="font-size:12px; color:var(--muted);">Domain ratings</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Sources -->
+  <div class="sec">
+    <div class="sec-label">Data Sources Used</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule); margin-bottom:28px;">
+      <div style="background:var(--paper); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">🐙</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Repository</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">GitHub API</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">25 public repos analyzed — commit patterns, contributor concentration, velocity trends, language profiles, dependency manifests</div>
+      </div>
+      <div style="background:var(--paper); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">👥</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">People &amp; Org</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">LinkedIn + Job Postings</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">Engineering org structure, seniority distribution, hiring patterns, leadership visibility, team size inference</div>
+      </div>
+      <div style="background:var(--paper); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">🔒</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Security</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">Snyk Advisor + CVE DB</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">Dependency vulnerability scoring, patch behavior analysis, CVE cross-reference, security tooling inference</div>
+      </div>
+      <div style="background:var(--paper); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">🏗️</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Tech Stack</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">BuiltWith + StackShare</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">537 technologies fingerprinted across 21 categories — cloud, security, monitoring, infrastructure tooling</div>
+      </div>
+      <div style="background:var(--cream); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">📰</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Strategic</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">Crunchbase + News</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">Partnership announcements, funding history, regulatory news, M&amp;A signals, Salesforce termination confirmation</div>
+      </div>
+      <div style="background:var(--cream); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">⚖️</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Legal &amp; Governance</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">SEC + Court Records</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">PBC charter governance analysis, IQVIA trade secrets litigation history, partnership agreement signals</div>
+      </div>
+      <div style="background:var(--cream); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">☁️</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Infrastructure</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">Job Postings + BuiltWith</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">AWS + Kubernetes confirmation, Apigee API management, HashiCorp Vault secrets management, multi-region inference</div>
+      </div>
+      <div style="background:var(--cream); padding:22px 20px;">
+        <div style="font-size:22px; margin-bottom:12px;">📋</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Benchmarks</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">Industry Survey Data</div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.6;">Enterprise vertical SaaS $1B–5B regulated industries peer group — bus factor norms, cloud cost ratios, test coverage thresholds</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 72-hour timeline -->
+  <div class="sec" style="background:var(--ink);">
+    <div class="sec-label" style="color:rgba(247,244,238,0.3);">72-Hour Timeline</div>
+    <div style="position:relative; padding:20px 0 40px;">
+      <!-- Spine line -->
+      <div style="position:absolute; left:50%; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.07); transform:translateX(-50%);"></div>
+
+      <!-- Events left/right alternating -->
+      <div style="display:flex; justify-content:flex-end; padding-right:calc(50% + 24px); margin-bottom:32px;">
+        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; right:-34px; top:18px; width:12px; height:12px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hour 0</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Deal Submitted</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Crosslake Partner submits Veeva Systems. Alex receives structured intake form and begins company profiling.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-start; padding-left:calc(50% + 24px); margin-bottom:32px;">
+        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; left:-34px; top:18px; width:12px; height:12px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hours 0–2</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Alex + Morgan — Profile &amp; Intelligence</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Alex classifies peer group, sets risk hypothesis. Morgan runs public signal collection across LinkedIn, BuiltWith, Crunchbase, news. Six combination signals identified including CRITICAL Salesforce termination.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; padding-right:calc(50% + 24px); margin-bottom:32px;">
+        <div style="background:rgba(176,141,42,0.06); border:1px solid rgba(176,141,42,0.2); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; right:-34px; top:18px; width:12px; height:12px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hours 2–36 · Parallel</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Jordan · Riley · Casey · Taylor — Deep Analysis</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Four agents run simultaneously. Jordan: 25 repos, bus factor 2 found. Riley: COMBO-04 at IQVIA boundary. Casey: zero test folders vs declared JUnit. Taylor: $50–100M remediation estimate.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; padding-right:calc(50% + 24px); margin-bottom:32px;">
+        <div style="background:rgba(176,141,42,0.06); border:1px solid rgba(176,141,42,0.2); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; right:-34px; top:18px; width:12px; height:12px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hours 2–36 · Parallel Human Track</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Practitioner — Early Review &amp; Correction Log</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Practitioner reviews Phase 1 outputs from Alex and Morgan while Phase 2 agents run in parallel. Corrections logged with context signals. Calibration data begins accumulating.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-start; padding-left:calc(50% + 24px); margin-bottom:32px;">
+        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; left:-34px; top:18px; width:12px; height:12px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hours 36–60</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Drew + Sam — Intelligence &amp; Synthesis</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Drew benchmarks all findings against peer group, names the Validation Capacity Cliff, builds three deal scenarios. Sam synthesizes into IC-ready report with 15 prioritized diligence questions.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-start; padding-left:calc(50% + 24px); margin-bottom:32px;">
+        <div style="background:rgba(176,141,42,0.08); border:2px solid rgba(176,141,42,0.35); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; left:-35px; top:17px; width:14px; height:14px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hours 60–66 · Human</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Practitioner — Full Report Review</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Practitioner reviews Sam's complete report section by section. Applies domain expertise and deal context. All corrections structured and logged. Escalated items flagged for partner attention.</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; padding-right:calc(50% + 24px);">
+        <div style="background:rgba(176,141,42,0.08); border:2px solid rgba(176,141,42,0.35); padding:18px 20px; max-width:340px; position:relative;">
+          <div style="position:absolute; right:-35px; top:17px; width:14px; height:14px; background:var(--gold); border-radius:50%; border:3px solid var(--ink);"></div>
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:6px;">Hours 66–72 · Human</div>
+          <div style="font-size:15px; font-weight:600; color:var(--paper); margin-bottom:4px;">Partner Sign-Off &amp; Delivery</div>
+          <div style="font-size:13px; color:rgba(247,244,238,0.5); line-height:1.5;">Crosslake Partner reviews practitioner-approved report — 30–45 minutes. Approves and delivers under Crosslake brand. PE client receives IC-ready assessment. Agentic TDD Practice remains invisible.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Key findings preview -->
+  <div class="sec">
+    <div class="sec-label">Headline Findings</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--rule); border:1px solid var(--rule); margin-bottom:24px;">
+      <div style="background:var(--paper); padding:24px 22px; border-bottom:1px solid var(--rule);">
+        <div style="display:inline-block; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; padding:3px 10px; background:var(--crit); color:white; margin-bottom:12px;">Critical</div>
+        <div style="font-size:16px; font-weight:600; margin-bottom:6px;">Salesforce Migration — No Fallback</div>
+        <div style="font-size:15px; color:var(--muted); line-height:1.7;">Salesforce partnership terminated 2025. Vault CRM migration is a hard deadline with no alternative platform available. Concentrates execution risk in months 0–18 post-close.</div>
+      </div>
+      <div style="background:var(--paper); padding:24px 22px; border-left:1px solid var(--rule); border-bottom:1px solid var(--rule);">
+        <div style="display:inline-block; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; padding:3px 10px; background:var(--crit); color:white; margin-bottom:12px;">Critical</div>
+        <div style="font-size:16px; font-weight:600; margin-bottom:6px;">Validation Capacity Cliff</div>
+        <div style="font-size:15px; color:var(--muted); line-height:1.7;">Four concurrent infrastructure programs in 2025 exceed bandwidth regulated SaaS organizations historically execute without material compliance failures. $50–100M remediation baseline.</div>
+      </div>
+      <div style="background:var(--paper); padding:24px 22px;">
+        <div style="display:inline-block; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; padding:3px 10px; background:var(--ink); color:var(--paper); margin-bottom:12px;">Compound — COMBO-04</div>
+        <div style="font-size:16px; font-weight:600; margin-bottom:6px;">Abandoned Tooling at IQVIA Boundary</div>
+        <div style="font-size:15px; color:var(--muted); line-height:1.7;">Three agents connecting signals independently: Jordan (abandoned repo), Morgan (IQVIA partnership post-litigation), Riley (unpatched dependencies at integration point). IP enforcement may be weaker than partnership assumes.</div>
+      </div>
+      <div style="background:var(--paper); padding:24px 22px; border-left:1px solid var(--rule);">
+        <div style="display:inline-block; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; padding:3px 10px; background:var(--gold); color:white; margin-bottom:12px;">20–30% Value Swing</div>
+        <div style="font-size:16px; font-weight:600; margin-bottom:6px;">Public vs Private Platform Discipline</div>
+        <div style="font-size:15px; color:var(--muted); line-height:1.7;">Casey identified the single most important question private diligence must resolve: whether private platform discipline exceeds public signals. The answer determines base or upside scenario — a $6–10B valuation difference.</div>
+      </div>
+    </div>
+    <div style="padding:18px 22px; background:var(--gold-lt); border-left:5px solid var(--gold); font-size:16px; line-height:1.75;">
+      <span style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:8px;">Recommended First Action in Private Diligence</span>
+      Request engineering org chart, test coverage reports from CI/CD, and last three IQ/OQ/PQ completion certificates in the first 72 hours of private data room access — these three data points resolve the 20–30% deal value swing and determine which scenario applies.
+    </div>
+  </div>
+
+</div><!-- /tab-poc -->
+
+
+<!-- ══════ TAB 4: THE AI STAFF TEAM ══════ -->
+<div id="tab-team" class="tab-panel">
+
+  <div class="sec">
+    <div class="sec-label">The AI Staff Team</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center; margin-bottom:0;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif; font-size:32px; font-weight:800; line-height:1.2; margin-bottom:20px; letter-spacing:-0.02em;">Eight specialists. Each with a defined domain, structured prompt, and JSON output schema.</h2>
+        <p style="font-size:17px; line-height:1.8; color:var(--muted); margin-bottom:16px;">The AI staff are not a single AI tool running a generic analysis. Each agent has a specific role, reads from the deal state produced by prior agents, and writes structured output that subsequent agents build on.</p>
+        <p style="font-size:17px; line-height:1.8; color:var(--muted);">Click any agent below to see what they produced on the Veeva engagement — verbatim output, ratings, and the exact language that would appear in a Crosslake client report.</p>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Alex</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Intake</div>
+        </div>
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Morgan</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Signals</div>
+        </div>
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Jordan</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Repos</div>
+        </div>
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Riley</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Security</div>
+        </div>
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Casey</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Code</div>
+        </div>
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Taylor</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Infra</div>
+        </div>
+        <div style="background:var(--ink); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--paper); margin-bottom:4px;">Drew</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:rgba(247,244,238,0.4);">Benchmarks</div>
+        </div>
+        <div style="background:rgba(176,141,42,0.15); border:1px solid rgba(176,141,42,0.3); padding:14px; text-align:center;">
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--gold); margin-bottom:4px;">Sam</div>
+          <div style="font-family:'DM Mono',monospace; font-size:8px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); opacity:0.6;">Synthesis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent accordion -->
+  <div style="border-top:1px solid var(--rule);">
+
+    <!-- Agent template macro -->
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">01</div><div class="ag-name">Alex</div>
+        <div><div class="ag-role">Intake &amp; Profile Specialist</div><div class="ag-verdict">Classified Veeva against enterprise vertical SaaS $1B–5B regulated peer group. Set five directional risk hypotheses that shaped every subsequent agent's analysis.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb conc"><div class="fb-tag conc">Primary Hypothesis</div><h4>Platform Migration Technical Debt Accumulation</h4><p>Alex identified the Vault CRM migration from Salesforce as the primary risk hypothesis — a forced platform transition creating technical debt under delivery pressure. <strong>This hypothesis was subsequently confirmed as CRITICAL by Morgan when the Salesforce partnership termination in 2025 was discovered, converting it from a working assumption to a confirmed active risk with no fallback position.</strong></p></div>
+        <div class="fb conc"><div class="fb-tag conc">Sector Classification</div><h4>GxP Compliance Elevated as Sector-Specific Risk Weight</h4><p>Alex classified Veeva against enterprise vertical SaaS peers in regulated industries and elevated GxP compliance as a non-standard risk weight. <strong>This single classification decision shaped how all five domains were assessed downstream — through a regulatory compliance lens, not just a standard engineering lens.</strong> Every benchmark comparison reflects this elevated standard.</p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Output</div><div class="ag-foot-val conc">5 risk hypotheses — platform migration, GxP compliance, security boundary, key person concentration, infrastructure re-qualification</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">02</div><div class="ag-name">Morgan</div>
+        <div><div class="ag-role">Public Signal Analyst</div><div class="ag-verdict">Confirmed Salesforce termination as CRITICAL. Identified PBC governance as structural acquisition constraint. Produced six combination signals across four intelligence domains.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb crit"><div class="fb-tag crit">Critical — Confirmed</div><h4>Salesforce Partnership Termination Converts Hypothesis to Active Risk</h4><p><strong>"The partnership termination confirms the migration is not merely a product upgrade but a full architectural and commercial separation from a foundational platform dependency. Any customers still on legacy Salesforce-based CRM at termination are in a forced migration window — increasing delivery pressure, potential service disruption risk, and the likelihood that technical debt shortcuts were taken to meet commitments."</strong></p></div>
+        <div class="fb crit"><div class="fb-tag crit">Critical — Structural</div><h4>PBC Governance Constrains Post-Acquisition Strategy</h4><p><strong>"A PE acquisition of a PBC requires the acquirer to engage with the legal obligations of the PBC charter. Standard PE value creation levers — workforce reduction, cost optimization, outsourcing, accelerated monetization — may conflict with PBC stakeholder obligations and create legal exposure."</strong> This is not a technology risk but directly affects which post-close strategies are legally permissible.</p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Domain Rating</div><div class="ag-foot-val conc">Concerning — 4 domains assessed, 6 combination signals, 2 CRITICAL confirmed findings</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">03</div><div class="ag-name">Jordan</div>
+        <div><div class="ag-role">Repository Analyst</div><div class="ag-verdict">Bus factor 2 on vault-api-library — primary customer SDK. Vault-Data-Tools abandoned at Data Cloud boundary. 25 public repos analyzed. CRITICAL domain rating.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb crit"><div class="fb-tag crit">Critical — T1-F1</div><h4>Bus Factor 2 on vault-api-library During Migration Window</h4><p>vault-api-library — the primary customer-facing Java SDK — shows only 4 visible contributors across 50 total commits. <strong>"If 2–3 of the 4 contributors rotate off, the SDK enters effective orphan status. For a platform undergoing forced CRM migration, SDK stability is non-negotiable — partner integrations built on VAPIL must continue to function through the migration window."</strong> Industry norm at this scale: 10–30 contributors. Veeva is bottom decile.</p></div>
+        <div class="fb crit"><div class="fb-tag crit">Critical — T1-F2</div><h4>Vault-Data-Tools: Zero Contributors, 3 Years Dormant, Unarchived</h4><p><strong>"Zero contributor attribution combined with no archival action means there is no clear owner if a customer raises a support issue against this repo. Acquirer would inherit unowned technical liabilities."</strong> In GxP environments, software used in validated workflows must have an identifiable responsible party — this repository has none and has not been formally decommissioned.</p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Domain Rating</div><div class="ag-foot-val crit">Critical — 2 CRITICAL findings, REACTIVE velocity pattern, contributor anonymity unresolved</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">04</div><div class="ag-name">Riley</div>
+        <div><div class="ag-role">Security Analyst</div><div class="ag-verdict">COMBO-04 — abandoned tooling at IQVIA integration boundary. LLM inference security surface unvalidated in GxP context. Sophisticated tooling partially offsets reactive patch cadence.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb" style="border-left-color:var(--ink)"><div class="fb-tag combo">Compound Finding — COMBO-04</div><h4>Abandoned Tooling at IQVIA Integration Boundary</h4><p><strong>"Vault-Data-Tools is both confirmed abandoned and sits at the Data Cloud boundary where IQVIA integration occurs. Abandoned Python tooling with unpatched dependencies at the boundary point of a new integration with a formerly adversarial party is a compounded risk. If IQVIA integration routes through or adjacent to Vault-Data-Tools infrastructure, the IP boundary enforcement may be weaker than the new partnership assumes."</strong> This finding connected signals from Jordan (repository), Morgan (strategy), and Riley (security) without human direction.</p></div>
+        <div class="fb conc"><div class="fb-tag conc">High Risk</div><h4>LLM Inference Security Surface Unvalidated in GxP Context</h4><p>Vault CRM Bot and Voice Control launched April 2025. <strong>Prompt injection as an attack vector in regulated clinical workflows is a new risk category with no established GxP mitigation framework. Non-deterministic LLM outputs in deterministic validation environments create audit trail gaps directly actionable by FDA inspectors.</strong> No established validation methodology exists at the time of assessment.</p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Domain Rating</div><div class="ag-foot-val conc">Concerning — COMBO-04 CRITICAL, sophisticated security tooling (HashiCorp Vault, Cortex XSOAR) partially offsets</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">05</div><div class="ag-name">Casey</div>
+        <div><div class="ag-role">Code Quality Analyst</div><div class="ag-verdict">JUnit declared, zero test folders visible. LLM non-determinism incompatible with GxP framework. 20–30% of deal value depends on private platform discipline. CRITICAL overall.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb crit"><div class="fb-tag crit">Critical</div><h4>Declared Standards vs. Actual Practice Gap</h4><p>JUnit declared as a dependency in pom.xml files — yet zero test folders visible in public repositories across 25 repos analyzed. <strong>"A company that declares testing tooling but does not visibly practice testing discipline in its customer-facing repositories suggests an engineering culture where standards are aspirational rather than embedded. In a GxP context, aspirational standards are a compliance risk not a cultural one."</strong></p></div>
+        <div class="fb crit"><div class="fb-tag crit">Critical — Value Swing</div><h4>20–30% of Deal Value Rests on a Single Private Diligence Question</h4><p><strong>"The key unknown is whether the public repo signals reflect genuine organizational practice or a deliberate separation between public SDK work and a more disciplined private platform — that distinction is worth approximately 20–30% of deal value if the private reality is substantially better than the public signals suggest."</strong> At $30.7B baseline, this represents a $6–10B valuation swing resolvable in the first 72 hours of private data room access.</p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Domain Rating</div><div class="ag-foot-val crit">Critical — Systemic compliance risk profile, three concurrent validation workstreams in 2025</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">06</div><div class="ag-name">Taylor</div>
+        <div><div class="ag-role">Infrastructure Analyst</div><div class="ag-verdict">Four concurrent infrastructure programs in 2025. $50–100M post-close remediation as conservative baseline. Cloud costs above peer benchmarks 18–24 months. CRITICAL overall.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb crit"><div class="fb-tag crit">Critical — Cost Estimate</div><h4>$50–100M Post-Close Remediation as Conservative Baseline</h4><p><strong>"Acquirer should treat GxP infrastructure compliance remediation as a material post-close cost item and model $50–100M in validation and remediation investment as a conservative baseline pending private due diligence confirmation."</strong> This covers Kubernetes re-qualification, LLM inference validation framework, Vault CRM migration qualification, and IQVIA integration qualification — all running concurrently in 2025.</p></div>
+        <div class="fb crit"><div class="fb-tag crit">Critical</div><h4>Validation Engineering Capacity Cannot Support Four Concurrent Programs</h4><p><strong>"The concurrent program load is objectively above what regulated SaaS organizations successfully execute, and the Salesforce hard deadline creates a sequencing constraint that cannot be negotiated away."</strong> Kubernetes re-qualification, LLM inference validation, Vault CRM migration qualification, and IQVIA integration qualification are all active simultaneously with no capacity buffer visible from public signals.</p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Domain Rating</div><div class="ag-foot-val crit">Critical — Infrastructure architecture credible, compliance execution at confirmed capacity ceiling</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">07</div><div class="ag-name">Drew</div>
+        <div><div class="ag-role">Benchmarking Specialist</div><div class="ag-verdict">Named the Validation Capacity Cliff as primary thesis risk. Three deal scenarios: base $95–155M, downside $175–275M, upside $36–40B valuation support.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb crit"><div class="fb-tag crit">Primary Thesis Risk — CR-01</div><h4>The Validation Capacity Cliff</h4><p><strong>"The compound risk that most threatens the investment thesis is CR-01, the Validation Capacity Cliff: the concurrent program load is objectively above what regulated SaaS organizations successfully execute, and the Salesforce hard deadline creates a sequencing constraint that cannot be negotiated away."</strong> Drew named this risk by synthesizing signals from Jordan, Casey, Taylor, and Morgan — no single prior agent had named it because it only emerges from the full cross-domain picture.</p></div>
+        <div class="fb conc"><div class="fb-tag conc">Overall Intelligence</div><h4>The Deal in One Paragraph</h4><p><strong>"Veeva presents as a commercially exceptional business — 30% revenue growth at $3B scale in a defensible regulated vertical is rare — operating under the most technically concentrated stress load of any comparable peer in the benchmark group. The deal is not a question of whether the business is valuable; it is a question of whether the technical and governance risks are quantifiable and structurable before close."</strong></p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Scenarios</div><div class="ag-foot-val conc">Base MEDIUM probability · Downside MEDIUM probability · Upside LOW probability</div></div>
+      </div>
+    </div>
+
+    <div class="ag-item">
+      <div class="ag-hdr" onclick="tog(this)">
+        <div class="ag-n">08</div><div class="ag-name">Sam</div>
+        <div><div class="ag-role">Report Synthesis</div><div class="ag-verdict">Produced IC-ready executive scorecard, five domain sections, five compound risks, three deal scenarios, and 15 prioritized diligence questions across three categories.</div></div>
+        <div class="ag-tog">+</div>
+      </div>
+      <div class="ag-body">
+        <div class="fb crit"><div class="fb-tag crit">Overall Rating: Critical</div><h4>Executive Deal Summary</h4><p><strong>"Veeva presents a structurally sound vertical SaaS franchise with 30% revenue growth, but three concurrent CRITICAL risk clusters — a hard Salesforce migration deadline, a validation capacity cliff from four overlapping infrastructure programs, and unvalidated LLM inference in GxP-regulated workflows — create a post-close remediation liability of $95–275M before value creation levers can be pulled. PBC governance constrains the standard PE operational playbook. The upside case is real but requires private platform discipline that public signals cannot confirm."</strong></p></div>
+        <div class="ag-footer"><div class="ag-foot-label">Full Report</div><div class="ag-foot-val crit">5 domain sections · 5 compound risks · 3 deal scenarios · 15 diligence questions · See Tab 05 for full output</div></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab-team -->
+
+
+<!-- ══════ TAB 5: THE ASSESSMENT OUTPUT ══════ -->
+<div id="tab-output" class="tab-panel">
+
+  <!-- Overall rating -->
+  <div style="background:var(--ink); padding:36px 72px; display:flex; align-items:center; gap:28px;">
+    <div style="font-family:'Playfair Display',serif; font-size:16px; padding:12px 24px; border:1px solid #ff6b50; color:#ff6b50; white-space:nowrap; flex-shrink:0;">Overall: Critical</div>
+    <div style="font-family:'Playfair Display',serif; font-size:19px; font-style:italic; line-height:1.6; color:#f0ece4;">Veeva presents a structurally sound vertical SaaS franchise with 30% revenue growth, but three concurrent CRITICAL risk clusters — a hard Salesforce migration deadline, a validation capacity cliff from four overlapping infrastructure programs, and unvalidated LLM inference in GxP-regulated workflows — create a post-close remediation liability of $95–275M before value creation levers can be pulled. PBC governance constrains the standard PE operational playbook.</div>
+  </div>
+
+  <!-- Domain scorecards -->
+  <div class="sec">
+    <div class="sec-label">Domain Assessments</div>
+    <div style="display:flex; flex-direction:column; gap:2px;">
+
+      <!-- Domain 1 -->
+      <div style="border:1px solid var(--rule); overflow:hidden;">
+        <div style="display:grid; grid-template-columns:200px 1fr; border-bottom:1px solid var(--rule);">
+          <div style="background:var(--crit); padding:20px 22px; display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.6);">Domain 01</div>
+            <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:white; line-height:1.1;">Code &amp;<br>Repository</div>
+            <div style="font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:rgba(255,255,255,0.8); margin-top:4px;">CRITICAL</div>
+          </div>
+          <div style="padding:20px 24px; background:var(--paper);">
+            <div style="font-size:16px; font-weight:700; margin-bottom:10px;">Bus factor 2 on vault-api-library and three-year abandonment of vault-data-tools at the IQVIA boundary signal deeper engineering debt than the franchise valuation reflects.</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+              <div style="padding:14px 16px; background:var(--accent-lt); border-left:4px solid var(--crit);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">Finding T1-F1</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">vault-api-library: 4 contributors, 50 commits, zero test folders. Bus factor 2 — bottom decile for this company scale. SDK stability non-negotiable during CRM migration window.</div>
+              </div>
+              <div style="padding:14px 16px; background:var(--accent-lt); border-left:4px solid var(--crit);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">Finding T1-F2</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">vault-data-tools: zero contributors, 3 years dormant, unarchived. Sits at Data Cloud boundary. No identifiable owner. Acquirer inherits unowned technical liabilities at IQVIA integration point.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Domain 2 -->
+      <div style="border:1px solid var(--rule); overflow:hidden;">
+        <div style="display:grid; grid-template-columns:200px 1fr;">
+          <div style="background:var(--conc); padding:20px 22px; display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.6);">Domain 02</div>
+            <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:white; line-height:1.1;">Security<br>Posture</div>
+            <div style="font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:rgba(255,255,255,0.8); margin-top:4px;">CONCERNING</div>
+          </div>
+          <div style="padding:20px 24px; background:var(--paper);">
+            <div style="font-size:16px; font-weight:700; margin-bottom:10px;">Sophisticated security tooling offset by reactive patch cadence incompatible with GxP change-control requirements, and unvalidated LLM prompt-injection exposure in regulated workflows.</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+              <div style="padding:14px 16px; background:var(--gold-lt); border-left:4px solid var(--conc);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--conc); margin-bottom:5px;">COMBO-04 — Compound</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Abandoned Python tooling at IQVIA integration boundary. Post-litigation partnership. Unpatched dependencies at the exact point where IP boundary enforcement matters most.</div>
+              </div>
+              <div style="padding:14px 16px; background:var(--gold-lt); border-left:4px solid var(--conc);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--conc); margin-bottom:5px;">LLM Surface</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Vault CRM Bot + Voice Control launched April 2025 in GxP workflows. Prompt injection attack vector in clinical workflows has no established GxP mitigation framework.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Domain 3 -->
+      <div style="border:1px solid var(--rule); overflow:hidden;">
+        <div style="display:grid; grid-template-columns:200px 1fr;">
+          <div style="background:var(--crit); padding:20px 22px; display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.6);">Domain 03</div>
+            <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:white; line-height:1.1;">SDLC &amp; GxP<br>Validation</div>
+            <div style="font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:rgba(255,255,255,0.8); margin-top:4px;">CRITICAL</div>
+          </div>
+          <div style="padding:20px 24px; background:var(--paper);">
+            <div style="font-size:16px; font-weight:700; margin-bottom:10px;">Declared JUnit standards with zero test folders and three concurrent validation workstreams in 2025 indicate a compliance posture built on documentation, not embedded practice.</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+              <div style="padding:14px 16px; background:var(--accent-lt); border-left:4px solid var(--crit);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">Standards Gap</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">JUnit declared in pom.xml. Zero test folders across 25 public repos. Declared tooling without visible practice signals aspirational rather than embedded quality standards.</div>
+              </div>
+              <div style="padding:14px 16px; background:var(--accent-lt); border-left:4px solid var(--crit);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">LLM + GxP Incompatibility</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Non-deterministic LLM outputs are structurally incompatible with GxP deterministic validation frameworks. No established regulatory pathway for LLM validation in clinical environments as of assessment date.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Domain 4 -->
+      <div style="border:1px solid var(--rule); overflow:hidden;">
+        <div style="display:grid; grid-template-columns:200px 1fr;">
+          <div style="background:var(--conc); padding:20px 22px; display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.6);">Domain 04</div>
+            <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:white; line-height:1.1;">Org &amp; Developer<br>Health</div>
+            <div style="font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:rgba(255,255,255,0.8); margin-top:4px;">CONCERNING</div>
+          </div>
+          <div style="padding:20px 24px; background:var(--paper);">
+            <div style="font-size:16px; font-weight:700; margin-bottom:10px;">Contributor anonymity and unidentifiable engineering leadership prevent full assessment of team depth; burst-velocity commit patterns indicate reactive rather than continuous delivery discipline.</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+              <div style="padding:14px 16px; background:var(--gold-lt); border-left:4px solid var(--conc);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--conc); margin-bottom:5px;">Leadership Opacity</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Engineering leadership not publicly identifiable on LinkedIn or company pages. Cannot assess VP Engineering tenure, background, or stability ahead of forced migration execution.</div>
+              </div>
+              <div style="padding:14px 16px; background:var(--gold-lt); border-left:4px solid var(--conc);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--conc); margin-bottom:5px;">Velocity Pattern</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Commit patterns show burst maintenance activity rather than continuous development cadence. Suggests reactive delivery culture — a concern in an environment requiring proactive GxP change control compliance.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Domain 5 -->
+      <div style="border:1px solid var(--rule); overflow:hidden;">
+        <div style="display:grid; grid-template-columns:200px 1fr;">
+          <div style="background:var(--crit); padding:20px 22px; display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.6);">Domain 05</div>
+            <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:white; line-height:1.1;">Infrastructure<br>&amp; Cost</div>
+            <div style="font-family:'DM Mono',monospace; font-size:12px; font-weight:500; color:rgba(255,255,255,0.8); margin-top:4px;">CRITICAL</div>
+          </div>
+          <div style="padding:20px 24px; background:var(--paper);">
+            <div style="font-size:16px; font-weight:700; margin-bottom:10px;">AWS + Kubernetes architecture is credible for a $3B SaaS platform. The critical gap is four concurrent infrastructure programs in 2025 with a conservative $50–100M remediation baseline.</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+              <div style="padding:14px 16px; background:var(--accent-lt); border-left:4px solid var(--crit);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">Concurrent Programs</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Kubernetes re-qualification, LLM inference validation, Vault CRM migration qualification, and IQVIA integration qualification — all running simultaneously in 2025 with no visible capacity buffer.</div>
+              </div>
+              <div style="padding:14px 16px; background:var(--accent-lt); border-left:4px solid var(--crit);">
+                <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">$50–100M Baseline</div>
+                <div style="font-size:14px; line-height:1.6; color:var(--muted);">Conservative post-close remediation reserve covering GxP infrastructure compliance gaps. Cloud cost trajectory above peer benchmarks 18–24 months due to parallel platform operation and LLM inference cost addition.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Deal scenarios -->
+  <div class="sec">
+    <div class="sec-label">Three Deal Scenarios</div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule); margin-bottom:24px;">
+      <div style="background:var(--paper); padding:26px 22px;">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Base Case · Probability: Medium</div>
+        <div style="font-family:'Playfair Display',serif; font-size:20px; font-weight:700; line-height:1.25; margin-bottom:10px;">Disciplined Migration — Value Through Execution</div>
+        <div style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--accent); margin-bottom:12px;">$95–155M post-close · 24 months</div>
+        <div style="font-size:15px; line-height:1.75; color:var(--muted); margin-bottom:14px;">Private access confirms public signals are broadly representative. Sufficient undisclosed engineering depth to execute Salesforce migration on schedule. AI features represent a calculated regulatory positioning rather than recklessness. PBC governance accepted as a structural constraint on value creation approach.</div>
+        <div style="padding:12px 14px; background:var(--cream); font-size:14px; line-height:1.6; margin-bottom:12px;">
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:5px;">Key Assumption</div>
+          Private platform quality mirrors public SDK signals — no material hidden discipline advantage in core Vault platform.
+        </div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.7;"><strong style="color:var(--ink);">Required investments:</strong> $50–80M GxP remediation reserve, $15–25M engineering talent, $10–20M legal and compliance, $20–30M test automation infrastructure.</div>
+      </div>
+      <div style="background:var(--accent-lt); padding:26px 22px; border:1px solid rgba(192,50,26,0.15);">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--crit); margin-bottom:8px;">Downside Case · Probability: Medium</div>
+        <div style="font-family:'Playfair Display',serif; font-size:20px; font-weight:700; line-height:1.25; margin-bottom:10px;">Validation Cascade — Regulatory Action Before Value Creation</div>
+        <div style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--crit); margin-bottom:12px;">$175–275M remediation · 48–60 months</div>
+        <div style="font-size:15px; line-height:1.75; color:var(--muted); margin-bottom:14px;">Private platform mirrors public signals. Contributor anonymity masks thin staffing not information management. Salesforce deadline met by deferring Kubernetes re-qualification, which triggers FDA inspection gap. IQVIA exercises partnership renegotiation rights on change of control. IRR compression to single digits or negative.</div>
+        <div style="padding:12px 14px; background:rgba(192,50,26,0.06); font-size:14px; line-height:1.6; margin-bottom:12px;">
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--crit); margin-bottom:5px;">Key Assumption</div>
+          Four concurrent programs are staffed by the same small core team — no hidden engineering capacity behind the anonymity policy.
+        </div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.7;"><strong style="color:var(--ink);">Protections required:</strong> 25–30% valuation discount, 15–20% escrow held 36 months, specific indemnification for IQVIA IP boundary and AI regulatory exposure, MAC clause covering GxP regulatory action.</div>
+      </div>
+      <div style="background:var(--gold-lt); padding:26px 22px; border:1px solid rgba(176,141,42,0.2);">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); margin-bottom:8px;">Upside Case · Probability: Low</div>
+        <div style="font-family:'Playfair Display',serif; font-size:20px; font-weight:700; line-height:1.25; margin-bottom:10px;">Public Noise, Private Signal — Premium Platform Play</div>
+        <div style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--gold); margin-bottom:12px;">$36–40B valuation support · $15–25M remediation</div>
+        <div style="font-size:15px; line-height:1.75; color:var(--muted); margin-bottom:14px;">Private platform has 60%+ test coverage, mature CI/CD pipelines, and current GxP documentation. Contributor anonymity is deliberate competitive information management — actual team is 500+ engineers. Proprietary AI validation framework in active FDA pre-submission dialogue. Vault CRM migration 80%+ complete at close.</div>
+        <div style="padding:12px 14px; background:rgba(176,141,42,0.08); font-size:14px; line-height:1.6; margin-bottom:12px;">
+          <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:5px;">Key Assumption</div>
+          Engineering headcount 500+ in core platform — public contributors represent 5% of actual team. Private diligence confirms within first 30 days.
+        </div>
+        <div style="font-size:14px; color:var(--muted); line-height:1.7;"><strong style="color:var(--ink);">Early confirmation signals:</strong> Org chart request in first week of private diligence, test coverage reports from CI/CD, FDA pre-submission correspondence on AI validation methodology.</div>
+      </div>
+    </div>
+
+    <!-- COMBO-04 -->
+    <div style="padding:28px 32px; border:1px solid var(--accent); background:var(--accent-lt); position:relative; margin-bottom:24px;">
+      <div style="position:absolute; top:-12px; left:24px; background:var(--paper); padding:0 12px; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:var(--accent);">Signature Compound Finding — COMBO-04</div>
+      <p style="font-size:16px; line-height:1.8; margin-bottom:12px;"><strong>Vault-Data-Tools</strong> — a Python data tooling repository at Veeva's Data Cloud boundary — is effectively abandoned: zero contributors, dormant for three years, no archival action. Veeva announced a partnership with IQVIA in August 2025 following the resolution of trade secrets litigation. If the IQVIA integration routes through or adjacent to that boundary tooling, the IP boundary enforcement may be weaker than the new partnership assumes.</p>
+      <p style="font-size:15px; color:var(--accent); font-weight:600; margin-bottom:14px;">This finding emerged from three AI staff connecting signals across engineering, strategy, and security — automatically and in parallel. No single practitioner working sequentially would have connected these three signals within a 72-hour window.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; padding:5px 12px; background:var(--ink); color:var(--paper);">Jordan — Repository</span>
+        <span style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; padding:5px 12px; background:var(--ink); color:var(--paper);">Morgan — Strategy</span>
+        <span style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; padding:5px 12px; background:var(--ink); color:var(--paper);">Riley — Security</span>
+      </div>
+    </div>
+
+    <!-- 15 Diligence Questions -->
+    <div class="sec-label" style="margin-top:32px;">15 Prioritized Diligence Questions</div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule);">
+      <div style="background:var(--paper); padding:22px 20px;">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--rule);">Category A — Ambiguous Findings</div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="padding:12px 14px; background:var(--cream); border-left:3px solid var(--rule);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--muted); margin-bottom:4px;">A-01 · TEAM DEPTH</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What is the full engineering org chart including all anonymized contributors? How many engineers work on core Vault platform vs public-facing SDKs?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--cream); border-left:3px solid var(--rule);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--muted); margin-bottom:4px;">A-02 · TEST COVERAGE</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Provide test coverage reports from CI/CD for core Vault platform. What is the automated test coverage percentage across regulated modules?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--cream); border-left:3px solid var(--rule);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--muted); margin-bottom:4px;">A-03 · CONTRIBUTOR POLICY</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What is the policy governing contributor anonymity in public repositories? Can vault-api-library actual team be identified under NDA?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--cream); border-left:3px solid var(--rule);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--muted); margin-bottom:4px;">A-04 · VAULT CRM STATUS</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What is the current Vault CRM migration completion percentage? How many enterprise customers remain on legacy Salesforce-based CRM at assessment date?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--cream); border-left:3px solid var(--rule);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--muted); margin-bottom:4px;">A-05 · AI VALIDATION</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Has Veeva submitted any pre-submission correspondence to FDA regarding AI validation methodology for Vault CRM Bot and Voice Control? Provide all FDA correspondence.</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--paper); padding:22px 20px; border-left:1px solid var(--rule);">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--rule);">Category B — High Risk Findings</div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="padding:12px 14px; background:var(--accent-lt); border-left:3px solid var(--crit);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--crit); margin-bottom:4px;">B-01 · GXP QUALIFICATION</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Provide last three IQ/OQ/PQ completion certificates for Kubernetes-migrated infrastructure. Which regulated Vault environments have been re-qualified post-migration?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--accent-lt); border-left:3px solid var(--crit);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--crit); margin-bottom:4px;">B-02 · VALIDATION CAPACITY</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What is the validation engineering headcount and capacity plan for concurrent qualification of four programs in 2025–2026? Provide resourcing plan.</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--accent-lt); border-left:3px solid var(--crit);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--crit); margin-bottom:4px;">B-03 · IQVIA IP BOUNDARY</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What technical enforcement mechanisms define the IP boundary in the IQVIA partnership agreement? What is the status of vault-data-tools relative to the integration architecture?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--accent-lt); border-left:3px solid var(--crit);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--crit); margin-bottom:4px;">B-04 · CHANGE CONTROL</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Provide last 12 months of change control records for regulated Vault infrastructure. Have any reactive infrastructure changes affected qualified systems without contemporaneous change records?</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--accent-lt); border-left:3px solid var(--crit);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--crit); margin-bottom:4px;">B-05 · EU DATA RESIDENCY</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Confirm which AWS regions serve EU pharma customers for regulated Vault environments. What data transfer mechanisms are in place? Is data residency architecture GxP and GDPR compliant?</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--paper); padding:22px 20px; border-left:1px solid var(--rule);">
+        <div style="font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--rule);">Category C — Deal Structure Implications</div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="padding:12px 14px; background:var(--gold-lt); border-left:3px solid var(--gold);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--gold); margin-bottom:4px;">C-01 · PBC CONVERSION</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What are the legal requirements and timeline for PBC charter conversion post-acquisition? What stakeholder obligations survive conversion? Informs post-close operational flexibility.</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--gold-lt); border-left:3px solid var(--gold);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--gold); margin-bottom:4px;">C-02 · CLOUD COST TRAJECTORY</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What is current AWS cloud spend as percentage of revenue? Provide 24-month projection including parallel platform operation window. Informs post-close cost modeling.</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--gold-lt); border-left:3px solid var(--gold);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--gold); margin-bottom:4px;">C-03 · KEY PERSON RETENTION</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Identify vault-api-library core contributors and VP Engineering with retention risk. Informs escrow structure and retention pool sizing — estimated 3–5% of deal value.</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--gold-lt); border-left:3px solid var(--gold);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--gold); margin-bottom:4px;">C-04 · IQVIA CHANGE OF CONTROL</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">Does the IQVIA partnership agreement contain change of control provisions? What renegotiation rights does IQVIA hold? Informs whether acquisition triggers material partnership terms change.</div>
+          </div>
+          <div style="padding:12px 14px; background:var(--gold-lt); border-left:3px solid var(--gold);">
+            <div style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; color:var(--gold); margin-bottom:4px;">C-05 · REMEDIATION ESCROW</div>
+            <div style="font-size:14px; line-height:1.6; color:var(--ink);">What specific GxP remediation milestones should govern escrow release conditions? Recommend 15–20% of deal value held 36 months against regulatory action, IQVIA claims, and SDK degradation events.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next step -->
+    <div style="margin-top:24px; padding:20px 26px; border-left:5px solid var(--gold); background:var(--gold-lt); font-size:16px; line-height:1.75;">
+      <div style="font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); margin-bottom:8px;">Recommended Immediate Next Step</div>
+      Request engineering org chart, test coverage reports from CI/CD, and last three IQ/OQ/PQ completion certificates in the first 72 hours of private data room access — these three data points resolve the 20–30% deal value swing and determine whether the base or upside case applies.
+    </div>
+  </div>
+
+</div><!-- /tab-output -->
+
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="foot-l">
+    Agentic TDD Practice · 8 AI Staff · 72-Hour Turnaround · Horizon 1 of 3<br>
+    Built for Crosslake Technologies · Confidential · February 2026
+  </div>
+  <div class="foot-r">Confidential · February 2026</div>
+</div>
+
+<script>
+function tog(hdr) {
+  const body = hdr.nextElementSibling;
+  const wasOpen = hdr.classList.contains('open');
+  document.querySelectorAll('.ag-hdr').forEach(h => h.classList.remove('open'));
+  document.querySelectorAll('.ag-body').forEach(b => b.classList.remove('open'));
+  if (!wasOpen) { hdr.classList.add('open'); body.classList.add('open'); }
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function switchIface(id, btn) {
+  document.querySelectorAll('.iface-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.iface-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('iface-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
