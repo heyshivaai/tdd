@@ -21,17 +21,21 @@ RATING_EMOJI = {
 
 
 def write_intelligence_brief(brief: dict, output_dir: Path) -> Path:
-    """Write the VDR Intelligence Brief JSON to output_dir/<company>/vdr_intelligence_brief.json."""
-    company = brief.get("company_name", "UNKNOWN")
-    dest = _ensure_company_dir(output_dir, company) / "vdr_intelligence_brief.json"
+    """Write the VDR Intelligence Brief JSON to output_dir/<deal_id>/vdr_intelligence_brief.json.
+
+    Uses deal_id as the folder name (consistent with deal system), falling back
+    to company_name for backward compatibility.
+    """
+    folder = brief.get("deal_id") or brief.get("company_name", "UNKNOWN")
+    dest = _ensure_company_dir(output_dir, folder) / "vdr_intelligence_brief.json"
     dest.write_text(json.dumps(brief, indent=2, ensure_ascii=False), encoding="utf-8")
     return dest
 
 
 def write_triage_report(brief: dict, output_dir: Path) -> Path:
     """Render the practitioner-facing triage report (heatmap + reading list + compound risks)."""
-    company = brief.get("company_name", "UNKNOWN")
-    dest = _ensure_company_dir(output_dir, company) / "vdr_triage_report.md"
+    folder = brief.get("deal_id") or brief.get("company_name", "UNKNOWN")
+    dest = _ensure_company_dir(output_dir, folder) / "vdr_triage_report.md"
     dest.write_text(_render_triage_md(brief), encoding="utf-8")
     return dest
 
@@ -39,17 +43,16 @@ def write_triage_report(brief: dict, output_dir: Path) -> Path:
 def write_completeness_report(completeness: dict, output_dir: Path) -> Path:
     """Render the completeness gap report as Markdown."""
     deal_id = completeness.get("deal_id", "UNKNOWN")
-    dest = output_dir / deal_id / "vdr_completeness_report.md"
-    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest = _ensure_company_dir(output_dir, deal_id) / "vdr_completeness_report.md"
     dest.write_text(_render_completeness_md(completeness), encoding="utf-8")
     return dest
 
 
 def write_feedback_shell(brief: dict, output_dir: Path, gate: int) -> Path:
     """Write an empty practitioner feedback JSON shell for the given gate."""
-    company = brief.get("company_name", "UNKNOWN")
+    folder = brief.get("deal_id") or brief.get("company_name", "UNKNOWN")
     deal_id = brief.get("deal_id", "UNKNOWN")
-    dest = _ensure_company_dir(output_dir, company) / f"feedback_gate{gate}.json"
+    dest = _ensure_company_dir(output_dir, folder) / f"feedback_gate{gate}.json"
     shell = {
         "deal_id": deal_id,
         "phase": 0,
@@ -71,9 +74,29 @@ def write_feedback_shell(brief: dict, output_dir: Path, gate: int) -> Path:
 
 # --- Private rendering helpers ---
 
+def _sanitize_folder_name(name: str) -> str:
+    """Sanitize a folder name to prevent path traversal and invalid characters.
+
+    Why: deal_id and company_name come from user input (or LLM output).
+    A value like '../../etc' or 'foo/bar' could escape the outputs directory.
+    """
+    # Remove path separators and parent-directory references
+    sanitized = name.replace("/", "_").replace("\\", "_").replace("..", "_")
+    # Strip leading/trailing whitespace and dots
+    sanitized = sanitized.strip().strip(".")
+    return sanitized or "UNKNOWN"
+
+
 def _ensure_company_dir(output_dir: Path, company: str) -> Path:
-    """Create and return output_dir/<company>/ directory."""
-    d = output_dir / company
+    """Create and return output_dir/<company>/ directory.
+
+    Sanitizes the folder name to prevent path traversal attacks.
+    """
+    safe_name = _sanitize_folder_name(company)
+    d = output_dir / safe_name
+    # Final check: resolved path must be under output_dir
+    if not str(d.resolve()).startswith(str(output_dir.resolve())):
+        raise ValueError(f"Invalid folder name would escape output directory: {company!r}")
     d.mkdir(parents=True, exist_ok=True)
     return d
 

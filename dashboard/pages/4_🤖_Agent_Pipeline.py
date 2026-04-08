@@ -24,6 +24,7 @@ from tools.deal_manager import (
     get_agent_progress,
     get_agent_output,
     update_agent_status,
+    seed_deal_state_from_vdr,
 )
 from agents.orchestrator import (
     AGENT_CHAIN,
@@ -175,6 +176,9 @@ with action_col1:
                         update_agent_status(deal_id, agent_name, "failed")
                         return
 
+                    # Seed deal state with VDR data before first agent
+                    seed_deal_state_from_vdr(deal_id)
+
                     client = anthropic.Anthropic(api_key=api_key)
 
                     # Run the agent
@@ -212,6 +216,9 @@ with action_col2:
                     if not api_key:
                         st.session_state.running_chain = False
                         return
+
+                    # Seed deal state with VDR data before agents run
+                    seed_deal_state_from_vdr(deal_id)
 
                     client = anthropic.Anthropic(api_key=api_key)
 
@@ -281,7 +288,7 @@ st.subheader("Agent Details")
 for agent_def in AGENT_CHAIN:
     agent_name = agent_def["name"]
     agent_label = agent_def["label"]
-    agent_desc = agent_def["description"]
+    agent_desc = agent_def.get("description", agent_def.get("label", ""))
     agent_info = agent_statuses.get(agent_name, {})
 
     status = agent_info.get("status", "pending")

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "vdr_signal_extraction.txt"
 DATA_DIR = Path(__file__).parent.parent / "data"
 MODEL = "claude-sonnet-4-20250514"
-MAX_TOKENS = 4096
+MAX_TOKENS = 8192
 # Chunks per API call. Higher = fewer calls but larger payloads.
 # At Tier 2 (450K input TPM) we can comfortably send 20 chunks per call
 # (~40K-60K tokens), keeping total calls manageable.

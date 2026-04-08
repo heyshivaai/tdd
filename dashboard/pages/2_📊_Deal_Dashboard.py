@@ -224,14 +224,173 @@ def _sev_order(severity: str) -> int:
 
 
 def _load_domain_findings(company_name: str) -> dict | None:
-    """Load domain_findings.json for a company."""
+    """Load agent findings — from domain_findings.json or individual agent outputs.
+
+    Checks domain_findings.json first (legacy format). If not found, reads
+    individual agent JSONs from outputs/<company>/agents/ and synthesizes
+    them into a unified view for the dashboard.
+    """
     path = OUTPUTS_DIR / company_name / "domain_findings.json"
-    if not path.exists():
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # Fall back to individual agent outputs
+    agents_dir = OUTPUTS_DIR / company_name / "agents"
+    if not agents_dir.exists():
         return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+
+    agent_files = sorted(agents_dir.glob("*.json"))
+    if not agent_files:
         return None
+
+    # Build a unified view from individual agent outputs
+    agents_data = {}
+    for af in agent_files:
+        try:
+            agents_data[af.stem] = json.loads(af.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+    if not agents_data:
+        return None
+
+    # Agent name → report key mapping
+    REPORT_KEYS = {
+        "alex": "alex",
+        "morgan": "morgan_intelligence_report",
+        "jordan": "jordan_repository_report",
+        "riley": "riley_security_report",
+        "casey": "casey_code_quality_report",
+        "taylor": "taylor_infrastructure_report",
+        "drew": "drew_benchmarking_report",
+        "sam": "sam_final_report",
+    }
+
+    # Agent name → domain label mapping
+    AGENT_DOMAINS = {
+        "alex": "Company Profile & Risk Hypothesis",
+        "morgan": "Public Signal Intelligence",
+        "jordan": "Code & Repository Health",
+        "riley": "Security Posture",
+        "casey": "Code Quality",
+        "taylor": "Infrastructure & Cost",
+        "drew": "Benchmarking & Compound Risks",
+        "sam": "Final Synthesis",
+    }
+
+    domains = {}
+    chase_list = []
+
+    for agent_name, raw_data in agents_data.items():
+        # Unwrap the report if it's nested under a report key
+        report_key = REPORT_KEYS.get(agent_name, agent_name)
+        report = raw_data.get(report_key, raw_data)
+
+        domain_label = AGENT_DOMAINS.get(agent_name, agent_name.title())
+
+        # Extract overall rating
+        overall_rating = (
+            report.get("overall_domain_rating")
+            or report.get("overall_rating")
+            or report.get("domain_rating")
+            or "UNKNOWN"
+        )
+
+        # Map text ratings to standard grades
+        rating_map = {
+            "CRITICAL": "RED", "CONCERNING": "YELLOW", "STRONG": "GREEN",
+            "ADEQUATE": "GREEN", "RED": "RED", "YELLOW": "YELLOW", "GREEN": "GREEN",
+        }
+        grade = rating_map.get(overall_rating.upper(), overall_rating.upper())
+
+        # Extract summary — guard against non-string types (dict, list, int)
+        summary = (
+            report.get("overall_domain_summary")
+            or report.get("executive_summary")
+            or report.get("summary")
+            or ""
+        )
+        if isinstance(summary, dict):
+            summary = summary.get("summary", str(summary))
+        elif not isinstance(summary, str):
+            summary = str(summary)
+
+        # Extract findings from various agent output formats
+        findings = []
+        for fkey in ["domain_findings", "findings", "key_findings", "critical_findings"]:
+            val = report.get(fkey, [])
+            if isinstance(val, list):
+                for item in val:
+                    if isinstance(item, dict):
+                        # Domain findings are often nested with sub-findings
+                        sub_findings = item.get("findings", [])
+                        if sub_findings and isinstance(sub_findings, list):
+                            for sf in sub_findings:
+                                if isinstance(sf, dict):
+                                    findings.append({
+                                        "title": sf.get("title", sf.get("finding", sf.get("observation", ""))),
+                                        "severity": sf.get("severity", sf.get("rating", sf.get("risk_level", "MEDIUM"))),
+                                        "description": sf.get("description", sf.get("detail", sf.get("observation", ""))),
+                                        "evidence": sf.get("evidence", sf.get("evidence_quote", "")),
+                                        "business_impact": sf.get("deal_implication", sf.get("business_impact", sf.get("impact", ""))),
+                                    })
+                        else:
+                            findings.append({
+                                "title": item.get("title", item.get("finding", item.get("observation", ""))),
+                                "severity": item.get("severity", item.get("rating", item.get("risk_level", "MEDIUM"))),
+                                "description": item.get("description", item.get("detail", item.get("observation", ""))),
+                                "evidence": item.get("evidence", item.get("evidence_quote", "")),
+                                "business_impact": item.get("deal_implication", item.get("business_impact", item.get("impact", ""))),
+                            })
+                if findings:
+                    break
+
+        # Extract combination/compound signals as additional findings
+        for ckey in ["combination_signals", "compound_risks", "compound_signals"]:
+            combos = report.get(ckey, [])
+            if isinstance(combos, list):
+                for combo in combos:
+                    if isinstance(combo, dict):
+                        findings.append({
+                            "title": combo.get("signal_id", "") + ": " + combo.get("combined_observation", combo.get("title", ""))[:80],
+                            "severity": combo.get("severity", "HIGH"),
+                            "description": combo.get("combined_observation", combo.get("narrative", "")),
+                            "business_impact": combo.get("deal_implication", ""),
+                        })
+
+        # Extract chase questions
+        for qkey in ["priority_questions_for_next_agents", "priority_questions_for_riley",
+                      "priority_questions_for_casey", "priority_questions_for_taylor",
+                      "priority_questions_for_drew", "follow_on_questions", "questions"]:
+            qs = report.get(qkey, [])
+            if isinstance(qs, list):
+                for q in qs:
+                    q_text = q.get("question", str(q)) if isinstance(q, dict) else str(q)
+                    chase_list.append({
+                        "question": q_text,
+                        "pillar_label": domain_label,
+                        "pillar_id": agent_name,
+                        "priority": q.get("priority", "medium") if isinstance(q, dict) else "medium",
+                        "source_agent": agent_name,
+                    })
+
+        domains[agent_name] = {
+            "pillar_label": domain_label,
+            "grade": grade,
+            "domain_summary": summary[:500] if isinstance(summary, str) else "",
+            "findings": findings,
+            "confidence": report.get("metadata", {}).get("overall_confidence", "—") if isinstance(report.get("metadata"), dict) else "—",
+        }
+
+    return {
+        "domains": domains,
+        "chase_list": chase_list,
+        "_source": "agent_outputs",
+        "_agents_completed": list(agents_data.keys()),
+    }
 
 
 def _build_chase_text(chase_list: list[dict]) -> str:
@@ -688,6 +847,9 @@ with phase_tabs[1]:
                             if f_evidence:
                                 st.markdown("**Evidence chain:**")
                                 for ev in f_evidence:
+                                    if isinstance(ev, str):
+                                        st.markdown(f"- {ev}")
+                                        continue
                                     ev_type = ev.get("type", "")
                                     if ev_type == "signal":
                                         st.markdown(

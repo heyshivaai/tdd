@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "vdr_cross_reference.txt"
 MODEL = "claude-sonnet-4-20250514"
-MAX_TOKENS = 8192
+MAX_TOKENS = 16384
 
 
 def cross_reference_signals(
@@ -50,19 +50,41 @@ def cross_reference_signals(
         timestamp=timestamp,
     )
 
-    try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = response.content[0].text
-        result = _extract_json(raw)
-        if result:
-            result.setdefault("vdr_scan_timestamp", timestamp)
-            return result
-    except Exception as exc:
-        logger.error("Cross-reference Claude call failed: %s", exc)
+    for attempt in range(2):
+        try:
+            tokens = MAX_TOKENS if attempt == 0 else MAX_TOKENS + 8192
+            response = client.messages.create(
+                model=MODEL,
+                max_tokens=tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = response.content[0].text
+            stop_reason = getattr(response, "stop_reason", None)
+
+            if stop_reason == "max_tokens":
+                logger.warning(
+                    "Cross-reference response truncated (attempt %d, %d tokens). %s",
+                    attempt + 1, tokens,
+                    "Retrying with more tokens..." if attempt == 0 else "Using partial result.",
+                )
+                if attempt == 0:
+                    continue
+
+            result = _extract_json(raw)
+            if result:
+                result.setdefault("vdr_scan_timestamp", timestamp)
+                # Validate that key sections are present
+                if not result.get("lens_heatmap"):
+                    logger.warning("Brief missing lens_heatmap — response may be incomplete")
+                return result
+            else:
+                logger.error("Failed to parse JSON from cross-reference response (attempt %d)", attempt + 1)
+                if attempt == 0:
+                    continue
+        except Exception as exc:
+            logger.error("Cross-reference Claude call failed (attempt %d): %s", attempt + 1, exc)
+            if attempt == 0:
+                continue
 
     return _empty_brief(company_name, deal_id, timestamp)
 

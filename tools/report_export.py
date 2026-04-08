@@ -76,6 +76,7 @@ def generate_report(company_name: str) -> Optional[io.BytesIO]:
     domain_data = _load_json(company_dir / "domain_findings.json")
     scan_registry = _load_json(OUTPUTS_DIR / "_scan_registry.json")
     scan_meta = scan_registry.get(company_name, {}) if scan_registry else {}
+    completeness_report = (company_dir / "vdr_completeness_report.md").read_text(encoding="utf-8") if (company_dir / "vdr_completeness_report.md").exists() else ""
 
     if not brief and not domain_data:
         logger.error("No scan data found for %s", company_name)
@@ -222,6 +223,117 @@ def generate_report(company_name: str) -> Optional[io.BytesIO]:
             row[1].text = str(len(sigs))
             row[2].text = str(red_n)
             row[3].text = str(yellow_n)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # COMPOUND RISKS — Cross-pillar risks that span multiple signals
+    # ══════════════════════════════════════════════════════════════════════
+    compound_risks = brief.get("compound_risks", [])
+    if compound_risks:
+        doc.add_heading("Compound Risks", level=1)
+        doc.add_paragraph(
+            "These risks span multiple pillars or documents and are more serious "
+            "than any individual signal because they compound across independent sources."
+        )
+        for cr in sorted(compound_risks, key=lambda c: _sev_order(c.get("severity", "MEDIUM"))):
+            p = doc.add_paragraph()
+            sev = cr.get("severity", "MEDIUM")
+            sev_run = p.add_run(f"[{sev}] ")
+            sev_run.bold = True
+            sev_run.font.color.rgb = _sev_color(sev)
+            title_run = p.add_run(str(cr.get("title") or "Untitled"))
+            title_run.bold = True
+            title_run.font.size = Pt(11)
+
+            narrative = cr.get("narrative")
+            if narrative:
+                doc.add_paragraph(str(narrative))
+
+            contributing = cr.get("contributing_signals", [])
+            if contributing and isinstance(contributing, list):
+                p = doc.add_paragraph()
+                run = p.add_run("Contributing signals: ")
+                run.bold = True
+                run.font.size = Pt(9)
+                p.add_run(", ".join(str(s) for s in contributing)).font.size = Pt(9)
+
+            doc.add_paragraph("")  # spacer
+
+    # ══════════════════════════════════════════════════════════════════════
+    # CONTRADICTIONS — Conflicting information across documents
+    # ══════════════════════════════════════════════════════════════════════
+    contradictions = brief.get("contradictions", [])
+    if contradictions:
+        doc.add_heading("Contradictions & Conflicts", level=1)
+        doc.add_paragraph(
+            "The following conflicts were identified where one document claims "
+            "something that another document contradicts. These require clarification "
+            "from the target during diligence."
+        )
+        for i, contradiction in enumerate(contradictions, 1):
+            if isinstance(contradiction, dict):
+                p = doc.add_paragraph()
+                run = p.add_run(f"{i}. ")
+                run.bold = True
+                p.add_run(str(contradiction.get("description") or contradiction.get("title") or str(contradiction)))
+                sources = contradiction.get("documents") or contradiction.get("sources") or []
+                if sources and isinstance(sources, list):
+                    p2 = doc.add_paragraph()
+                    run2 = p2.add_run("Sources: ")
+                    run2.bold = True
+                    run2.font.size = Pt(9)
+                    p2.add_run(", ".join(str(s) for s in sources)).font.size = Pt(9)
+            else:
+                doc.add_paragraph(f"{i}. {contradiction}")
+            doc.add_paragraph("")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # COMPLETENESS ASSESSMENT — What's missing from the data room
+    # ══════════════════════════════════════════════════════════════════════
+    if completeness_report:
+        doc.add_heading("VDR Completeness Assessment", level=1)
+        doc.add_paragraph(
+            "Analysis of document coverage against the standard PE technology "
+            "due diligence data room checklist."
+        )
+        # Parse the markdown report into paragraphs
+        for line in completeness_report.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("# "):
+                doc.add_heading(line.lstrip("# "), level=2)
+            elif line.startswith("## "):
+                doc.add_heading(line.lstrip("## "), level=3)
+            elif line.startswith("- ") or line.startswith("* "):
+                doc.add_paragraph(line[2:], style="List Bullet")
+            else:
+                doc.add_paragraph(line)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # PRIORITIZED READING LIST — Top documents for practitioner review
+    # ══════════════════════════════════════════════════════════════════════
+    reading_list = brief.get("prioritized_reading_list", [])
+    if reading_list:
+        doc.add_heading("Prioritized Reading List", level=1)
+        doc.add_paragraph(
+            "Documents ranked by signal density, severity, and relevance. "
+            "A practitioner should read these in order for the fastest path to deal clarity."
+        )
+        table = doc.add_table(rows=1, cols=5)
+        table.style = "Light Grid Accent 1"
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        hdr = table.rows[0].cells
+        for i, h in enumerate(["Rank", "Document", "Section", "Reason", "Est. Time"]):
+            hdr[i].text = h
+            _bold_cell(hdr[i])
+
+        for item in sorted(reading_list, key=lambda x: x.get("rank", 99)):
+            row = table.add_row().cells
+            row[0].text = str(item.get("rank", ""))
+            row[1].text = item.get("document", item.get("filename", "")) or "—"
+            row[2].text = item.get("vdr_section", "") or "—"
+            row[3].text = item.get("reason", "") or "—"
+            row[4].text = f"{item.get('estimated_read_time_mins', '—')} min"
 
     # ══════════════════════════════════════════════════════════════════════
     # DOMAIN ANALYSIS — Full findings with evidence chains

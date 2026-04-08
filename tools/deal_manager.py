@@ -211,6 +211,72 @@ def get_deal_state(deal_id: str) -> dict:
         return json.load(f)
 
 
+def seed_deal_state_from_vdr(deal_id: str, force: bool = False) -> dict:
+    """
+    Merge VDR intelligence brief data into the deal state so agents can use it.
+
+    Loads the vdr_intelligence_brief.json for the deal and adds key fields
+    (signals, compound risks, domain slices, lens heatmap, executive summary,
+    document inventory) into the deal state under a 'vdr_scan' key.
+
+    This bridges Phase 0 (VDR scan) and Phase 1 (agent pipeline).
+    Idempotent: skips if vdr_scan already present unless force=True.
+
+    Args:
+        deal_id: Deal identifier.
+        force: If True, overwrite existing vdr_scan data.
+
+    Returns:
+        dict: The updated deal_state object.
+    """
+    state = get_deal_state(deal_id)
+
+    # Idempotency: skip if already seeded (unless forced)
+    if "vdr_scan" in state and state["vdr_scan"].get("signal_count", 0) > 0 and not force:
+        logger.info("VDR scan already seeded for %s (%d signals) — skipping",
+                     deal_id, state["vdr_scan"]["signal_count"])
+        return state
+
+    brief_file = OUTPUTS_DIR / deal_id / "vdr_intelligence_brief.json"
+
+    if not brief_file.exists():
+        logger.warning("No VDR brief found for %s — agents will run without VDR context", deal_id)
+        return state
+
+    try:
+        with open(brief_file, "r", encoding="utf-8") as f:
+            brief = json.load(f)
+    except (json.JSONDecodeError, Exception) as exc:
+        logger.error("Failed to load VDR brief for %s: %s", deal_id, exc)
+        return state
+
+    # Extract the most useful data for agents
+    state["vdr_scan"] = {
+        "overall_rating": brief.get("overall_signal_rating", "UNKNOWN"),
+        "scan_timestamp": brief.get("vdr_scan_timestamp", ""),
+        "signal_count": brief.get("signal_count", len(brief.get("signals", []))),
+        "signals": brief.get("signals", []),
+        "compound_risks": brief.get("compound_risks", []),
+        "contradictions": brief.get("contradictions", []),
+        "lens_heatmap": brief.get("lens_heatmap", {}),
+        "executive_summary": brief.get("executive_summary", ""),
+        "domain_slices": brief.get("domain_slices", {}),
+        "prioritized_reading_list": brief.get("prioritized_reading_list", []),
+        "document_inventory": brief.get("document_inventory", []),
+    }
+
+    # Persist to disk
+    state_file = OUTPUTS_DIR / deal_id / "deal_state.json"
+    with open(state_file, "w") as f:
+        json.dump(state, f, indent=2)
+
+    logger.info(
+        "Seeded deal state for %s with VDR data: %d signals, rating=%s",
+        deal_id, state["vdr_scan"]["signal_count"], state["vdr_scan"]["overall_rating"],
+    )
+    return state
+
+
 def update_deal_state(deal_id: str, agent_name: str, agent_output: dict) -> dict:
     """
     Merge an agent's output into the cumulative deal state and save to disk.
