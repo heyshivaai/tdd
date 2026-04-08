@@ -57,9 +57,14 @@ def run_triage(
     sector: str,
     deal_type: str,
     client,
+    selected_batches: list[str] | None = None,
 ) -> Tuple[dict, dict]:
     """
     Execute the full Phase 0 VDR triage pipeline.
+
+    Args:
+        selected_batches: If provided, only process these batch groups.
+            None means process all batches (full scan).
 
     Returns (intelligence_brief, completeness_report) as dicts.
     All four output files are written to outputs/<company_name>/.
@@ -70,10 +75,18 @@ def run_triage(
     inventory = vdr_map["inventory"]
     batch_groups = vdr_map["batch_groups"]
     logger.info("Inventory: %d files across %d batch groups", len(inventory), len(batch_groups))
+    # Filter to selected batches if selective scan
+    if selected_batches:
+        skipped = set(batch_groups.keys()) - set(selected_batches)
+        batch_groups = {k: v for k, v in batch_groups.items() if k in selected_batches}
+        logger.info("Selective scan: %d batches selected, %d skipped (%s)",
+                    len(batch_groups), len(skipped), ", ".join(sorted(skipped)))
+
     update_scan(company_name, progress={
         "doc_count": len(inventory),
         "batches_total": len(batch_groups),
-        "step": f"Step 1/4 complete: {len(inventory)} files, {len(batch_groups)} batches",
+        "step": f"Step 1/4 complete: {len(inventory)} files, {len(batch_groups)} batches"
+              + (f" (selective: {len(batch_groups)} of {len(vdr_map['batch_groups'])})" if selected_batches else ""),
     })
 
     logger.info("Step 2: Checking completeness")

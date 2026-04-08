@@ -1,10 +1,14 @@
 """
-New Scan — launch a VDR triage scan from the dashboard.
+New Scan — preview VDR, pick batches, launch selective or full scan.
 
-Updated to work with deal_manager. Collects VDR path and deal metadata,
-then kicks off run_triage() in a background thread. Progress is streamed
-via the scan_registry.
+Flow:
+1. Select deal → VDR path is pre-filled
+2. Click "Preview VDR" → instant classification into tiers/batches
+3. Review batch breakdown, pick which tiers/batches to scan
+4. Click "Launch Scan" → runs selected batches only
+5. Live progress with step-by-step KPIs
 """
+import json
 import os
 import sys
 import threading
@@ -20,13 +24,19 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from tools.scan_registry import register_scan, update_scan, get_scan, get_all_scans
 from tools.deal_manager import list_deals, get_deal, update_deal
+from tools.structure_mapper import map_vdr_structure
+from tools.signal_extractor import BATCH_TO_PILLARS
+
+DATA_DIR = PROJECT_ROOT / "data"
+BATCH_RULES_PATH = DATA_DIR / "batch_rules.json"
+BATCH_TIERS_PATH = DATA_DIR / "batch_tiers.json"
 
 # ── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(page_title="New Scan | TDD Platform", page_icon="🚀", layout="wide")
-st.title("🚀 New VDR Scan")
-st.caption("Launch a technology due diligence scan against a Virtual Data Room.")
+st.title("🚀 VDR Scan")
+st.caption("Preview your VDR, select batches, and launch a targeted or full scan.")
 
-# ── Discover existing VDR folders for convenience ───────────────────────────
+# ── Discover existing VDR folders ───────────────────────────────────────────
 VDR_ROOT = PROJECT_ROOT / "VDR"
 vdr_choices = []
 if VDR_ROOT.exists():
@@ -34,26 +44,16 @@ if VDR_ROOT.exists():
         if p.is_dir():
             vdr_choices.append(str(p))
 
-# ── Sidebar: deals and scans ────────────────────────────────────────────────
+# ── Sidebar ─────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.subheader("Deals & Scans")
     all_deals = list_deals()
-
     if all_deals:
         st.caption("Active Deals")
         for deal in all_deals[:5]:
-            deal_id = deal.get("deal_id", "unknown")
-            company = deal.get("company_name", "Unknown")
             scan_status = deal.get("scan_status", "not_started")
-
-            status_icon = {
-                "not_started": "⚪",
-                "in_progress": "🔄",
-                "completed": "✅",
-                "failed": "❌",
-            }.get(scan_status, "❓")
-
-            st.text(f"{status_icon} {deal_id} — {company}")
+            icon = {"not_started": "⚪", "in_progress": "🔄", "completed": "✅", "failed": "❌"}.get(scan_status, "❓")
+            st.text(f"{icon} {deal['deal_id']} — {deal.get('company_name', '?')}")
 
     st.divider()
     st.caption("Recent Scans")
@@ -63,14 +63,9 @@ with st.sidebar:
             status = rec.get("status", "unknown")
             icon = {"running": "🔄", "completed": "✅", "failed": "❌", "stale": "⚠️"}.get(status, "❓")
             st.text(f"{icon} {company} — {status}")
-    else:
-        st.caption("No scans yet.")
 
-# ── Scan form ───────────────────────────────────────────────────────────────
+# ── Deal selector ───────────────────────────────────────────────────────────
 st.markdown("---")
-st.subheader("Scan Configuration")
-
-# Deal selector
 all_deals = list_deals()
 deal_options = {d["deal_id"]: d for d in all_deals} if all_deals else {}
 
@@ -78,179 +73,303 @@ if not deal_options:
     st.info("No deals found. Go to **🆕 New Deal** to create one first.")
     st.stop()
 
-selected_deal_id = st.selectbox(
-    "Select Deal",
-    options=list(deal_options.keys()),
-    help="Choose which deal to scan.",
-)
-
+selected_deal_id = st.selectbox("Select Deal", options=list(deal_options.keys()))
 selected_deal = deal_options[selected_deal_id]
 
-# Pre-fill deal metadata
 col1, col2 = st.columns(2)
-
 with col1:
     st.metric("Company", selected_deal["company_name"])
     st.metric("Sector", selected_deal["sector"])
-
 with col2:
     st.metric("Deal Type", selected_deal["deal_type"])
-    deal_status = selected_deal.get("scan_status", "not_started")
-    st.metric("Scan Status", deal_status)
+    st.metric("Scan Status", selected_deal.get("scan_status", "not_started"))
 
 st.markdown("---")
 
-# VDR path and optional overrides
-col1, col2 = st.columns(2)
+# ── VDR path ────────────────────────────────────────────────────────────────
+vdr_mode = st.radio("VDR Location", ["Use deal's VDR", "Select from project", "Enter path manually"], horizontal=True)
 
-with col1:
-    vdr_mode = st.radio("VDR Location", ["Use deal's VDR", "Select from project", "Enter path manually"], horizontal=True)
-
-    if vdr_mode == "Use deal's VDR":
-        if selected_deal.get("vdr_path"):
-            vdr_path = selected_deal["vdr_path"]
-            st.caption(f"Using: {vdr_path}")
-        else:
-            st.warning("Deal has no VDR path configured.")
-            vdr_path = ""
-    elif vdr_mode == "Select from project" and vdr_choices:
-        vdr_path = st.selectbox("VDR Folder", options=vdr_choices, key="vdr_select")
+if vdr_mode == "Use deal's VDR":
+    vdr_path = selected_deal.get("vdr_path", "")
+    if vdr_path:
+        st.caption(f"Using: {vdr_path}")
     else:
-        vdr_path = st.text_input(
-            "VDR Path",
-            value=selected_deal.get("vdr_path", ""),
-            placeholder=r"C:\Users\...\VDR\Company-Name",
-            help="Absolute path to the VDR root folder on your machine.",
-            key="vdr_manual",
-        )
-
-with col2:
-    st.write("")  # Spacer
-    st.write("")  # Spacer
-    update_vdr = st.checkbox("Update deal's VDR path", value=False)
+        st.warning("Deal has no VDR path. Select another option.")
+elif vdr_mode == "Select from project" and vdr_choices:
+    vdr_path = st.selectbox("VDR Folder", options=vdr_choices, key="vdr_select")
+else:
+    vdr_path = st.text_input("VDR Path", value=selected_deal.get("vdr_path", ""), key="vdr_manual")
 
 company_name = selected_deal["company_name"]
 deal_id = selected_deal_id
 sector = selected_deal["sector"]
 deal_type = selected_deal["deal_type"]
 
-# ── Validation ──────────────────────────────────────────────────────────────
-ready = True
-warnings = []
-if not company_name:
-    warnings.append("Company name is required.")
-    ready = False
-if not deal_id:
-    warnings.append("Deal ID is required.")
-    ready = False
-if not vdr_path:
-    warnings.append("VDR path is required.")
-    ready = False
-elif not Path(vdr_path).exists():
-    warnings.append(f"VDR path does not exist: `{vdr_path}`")
-    ready = False
+# Validation
+vdr_valid = bool(vdr_path) and Path(vdr_path).exists()
+if vdr_path and not Path(vdr_path).exists():
+    st.warning(f"VDR path does not exist: `{vdr_path}`")
 
-# ── Launch button ───────────────────────────────────────────────────────────
-st.markdown("---")
-
-if warnings:
-    for w in warnings:
-        st.warning(w)
-
-# Session state for tracking the running scan
+# ── Session state ───────────────────────────────────────────────────────────
+if "preview_data" not in st.session_state:
+    st.session_state.preview_data = None
 if "scan_running" not in st.session_state:
     st.session_state.scan_running = False
 if "scan_company" not in st.session_state:
     st.session_state.scan_company = None
 
+# ── PHASE 1: Preview VDR ───────────────────────────────────────────────────
+st.markdown("---")
+st.subheader("Step 1: Preview VDR")
 
-def _run_scan_thread(vdr_path: str, company: str, deal_id: str, sector: str, deal_type: str):
-    """Run triage in a background thread, updating scan_registry as it goes."""
-    try:
-        import anthropic
-        from dotenv import load_dotenv
-        load_dotenv()
+if st.button("🔍 Preview VDR", disabled=not vdr_valid, type="secondary", use_container_width=True):
+    with st.spinner("Classifying documents..."):
+        vdr_map = map_vdr_structure(vdr_path, str(BATCH_RULES_PATH))
+        inventory = vdr_map["inventory"]
+        batch_groups = vdr_map["batch_groups"]
 
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            update_scan(company, status="failed", error="ANTHROPIC_API_KEY not set")
-            return
+        # Load tier config
+        tiers = {}
+        if BATCH_TIERS_PATH.exists():
+            with open(BATCH_TIERS_PATH) as f:
+                tier_config = json.load(f)
+            tiers = tier_config.get("tiers", {})
 
-        client = anthropic.Anthropic(api_key=api_key)
+        # Classify batches into tiers
+        tier_batches = {"core_tech": {}, "supporting_context": {}, "uncategorised": {}}
+        tier_meta = {}
+        for tier_id, tier_def in tiers.items():
+            tier_meta[tier_id] = tier_def
+            tier_batch_names = set(tier_def.get("batch_groups", []))
+            for bg_name, bg_docs in batch_groups.items():
+                if bg_name in tier_batch_names:
+                    tier_batches[tier_id][bg_name] = bg_docs
 
-        from agents.vdr_triage import run_triage
-        brief, completeness = run_triage(
-            vdr_path=vdr_path,
-            company_name=company,
+        # Anything not in a defined tier goes to uncategorised
+        classified = set()
+        for tb in tier_batches.values():
+            classified.update(tb.keys())
+        for bg_name, bg_docs in batch_groups.items():
+            if bg_name not in classified:
+                tier_batches["uncategorised"][bg_name] = bg_docs
+
+        st.session_state.preview_data = {
+            "inventory": inventory,
+            "batch_groups": batch_groups,
+            "tier_batches": tier_batches,
+            "tier_meta": tier_meta,
+            "vdr_path": vdr_path,
+        }
+
+    st.rerun()
+
+# ── PHASE 2: Batch picker ──────────────────────────────────────────────────
+if st.session_state.preview_data:
+    preview = st.session_state.preview_data
+    inventory = preview["inventory"]
+    batch_groups = preview["batch_groups"]
+    tier_batches = preview["tier_batches"]
+    tier_meta = preview["tier_meta"]
+
+    # Summary KPIs
+    st.subheader("VDR Overview")
+    k1, k2, k3 = st.columns(3)
+    k1.metric("Total Documents", len(inventory))
+    k2.metric("Batch Groups", len(batch_groups))
+    total_size_mb = sum(d.get("size_bytes", 0) for d in inventory) / (1024 * 1024)
+    k3.metric("Total Size", f"{total_size_mb:.1f} MB")
+
+    # Tier breakdown with checkboxes
+    st.markdown("---")
+    st.subheader("Step 2: Select Batches to Scan")
+
+    selected_batches = []
+
+    tier_order = [
+        ("core_tech", "🟢 Tier 1 — Core Tech", True),
+        ("supporting_context", "🟡 Tier 2 — Supporting Context", False),
+        ("uncategorised", "⚪ Tier 3 — Uncategorised", False),
+    ]
+
+    for tier_id, tier_label, default_selected in tier_order:
+        batches = tier_batches.get(tier_id, {})
+        if not batches:
+            continue
+
+        tier_def = tier_meta.get(tier_id, {})
+        total_docs = sum(len(docs) for docs in batches.values())
+        est_time = tier_def.get("estimated_minutes", "?")
+
+        with st.expander(f"{tier_label} — {total_docs} docs, ~{est_time} min", expanded=(tier_id == "core_tech")):
+            st.caption(tier_def.get("description", ""))
+
+            # Select all for this tier
+            select_all = st.checkbox(
+                f"Select all {tier_label.split('—')[1].strip()} batches",
+                value=default_selected,
+                key=f"tier_all_{tier_id}",
+            )
+
+            for bg_name, bg_docs in sorted(batches.items()):
+                doc_count = len(bg_docs)
+                size_mb = sum(d.get("size_bytes", 0) for d in bg_docs) / (1024 * 1024)
+
+                checked = st.checkbox(
+                    f"**{bg_name}** — {doc_count} docs ({size_mb:.1f} MB)",
+                    value=select_all,
+                    key=f"batch_{tier_id}_{bg_name}",
+                )
+                if checked:
+                    selected_batches.append(bg_name)
+
+                # Show sample filenames
+                if doc_count > 0:
+                    sample = [d["filename"] for d in bg_docs[:3]]
+                    remaining = doc_count - len(sample)
+                    sample_text = ", ".join(sample)
+                    if remaining > 0:
+                        sample_text += f", +{remaining} more"
+                    st.caption(f"   Files: {sample_text}")
+
+    # Selection summary
+    st.markdown("---")
+    total_selected_docs = sum(
+        len(batch_groups[bg]) for bg in selected_batches if bg in batch_groups
+    )
+    s1, s2, s3 = st.columns(3)
+    s1.metric("Selected Batches", len(selected_batches))
+    s2.metric("Selected Documents", total_selected_docs)
+    s3.metric("Skipping", f"{len(inventory) - total_selected_docs} docs")
+
+    # ── Pillar coverage map ─────────────────────────────────────────────────
+    PILLAR_LABELS = {
+        "TechnologyArchitecture": "Technology & Architecture",
+        "SecurityCompliance": "Security & Compliance",
+        "OrganizationTalent": "Organization & Talent",
+        "DataAIReadiness": "Data & AI Readiness",
+        "RDSpendAssessment": "R&D Spend Assessment",
+        "InfrastructureDeployment": "Infrastructure & Deployment",
+        "SDLCProductManagement": "SDLC & Product Management",
+    }
+
+    # Calculate which pillars are covered by selected batches
+    covered_pillars = set()
+    for bg in selected_batches:
+        for pillar in BATCH_TO_PILLARS.get(bg, []):
+            covered_pillars.add(pillar)
+
+    all_pillars_covered = set()
+    for bg in batch_groups:
+        for pillar in BATCH_TO_PILLARS.get(bg, []):
+            all_pillars_covered.add(pillar)
+
+    st.markdown("---")
+    st.subheader("Pillar Coverage")
+    st.caption("Which of the 7 pillars will be covered by the selected batches:")
+
+    pcols = st.columns(len(PILLAR_LABELS))
+    for i, (pid, plabel) in enumerate(PILLAR_LABELS.items()):
+        with pcols[i]:
+            if pid in covered_pillars:
+                st.markdown(f"✅ **{plabel}**")
+            elif pid in all_pillars_covered:
+                st.markdown(f"⚪ ~~{plabel}~~")
+            else:
+                st.markdown(f"❌ {plabel}")
+
+    covered_count = len(covered_pillars)
+    st.caption(f"**{covered_count}/7 pillars** covered by selected batches")
+
+    # ── PHASE 3: Launch scan ────────────────────────────────────────────────
+    st.markdown("---")
+    st.subheader("Step 3: Launch Scan")
+
+    scan_mode = "selective" if len(selected_batches) < len(batch_groups) else "full"
+    st.caption(f"Mode: **{scan_mode}** scan — {len(selected_batches)}/{len(batch_groups)} batches selected")
+
+    def _run_scan_thread(vdr_path, company, deal_id, sector, deal_type, selected_batches):
+        """Run triage in a background thread with selected batches."""
+        try:
+            import anthropic
+            from dotenv import load_dotenv
+            load_dotenv()
+
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                update_scan(company, status="failed", error="ANTHROPIC_API_KEY not set")
+                return
+
+            client = anthropic.Anthropic(api_key=api_key)
+
+            from agents.vdr_triage import run_triage
+            brief, completeness = run_triage(
+                vdr_path=vdr_path,
+                company_name=company,
+                deal_id=deal_id,
+                sector=sector,
+                deal_type=deal_type,
+                client=client,
+                selected_batches=selected_batches if selected_batches else None,
+            )
+
+            rating = brief.get("overall_signal_rating", "unknown")
+            total_signals = sum(
+                len(b.get("signals", []))
+                for b in brief.get("batch_results", [])
+            )
+            update_scan(
+                company,
+                status="completed",
+                phase="done",
+                rating=rating,
+                progress={"signals_found": total_signals, "step": "Scan complete"},
+            )
+            try:
+                update_deal(deal_id, scan_status="completed", current_phase="scan_complete")
+            except Exception:
+                pass
+        except Exception as exc:
+            update_scan(company, status="failed", error=str(exc)[:500])
+            try:
+                update_deal(deal_id, scan_status="failed")
+            except Exception:
+                pass
+
+    launch_disabled = not selected_batches or st.session_state.scan_running
+    if st.button("🚀 Launch Scan", disabled=launch_disabled, type="primary", use_container_width=True):
+        # Update deal VDR path if different
+        if vdr_path != selected_deal.get("vdr_path"):
+            update_deal(deal_id, vdr_path=vdr_path)
+
+        vdr_doc_count = sum(1 for _ in Path(vdr_path).rglob("*") if _.is_file())
+        register_scan(
+            company_name=company_name.upper(),
             deal_id=deal_id,
             sector=sector,
             deal_type=deal_type,
-            client=client,
+            scan_mode=scan_mode,
+            total_vdr_docs=vdr_doc_count,
+            selected_batches=selected_batches,
         )
 
-        rating = brief.get("overall_signal_rating", "unknown")
-        total_signals = sum(
-            len(b.get("signals", []))
-            for b in brief.get("batch_results", [])
+        update_deal(deal_id, scan_status="in_progress", current_phase="vdr_scan")
+
+        st.session_state.scan_running = True
+        st.session_state.scan_company = company_name.upper()
+
+        thread = threading.Thread(
+            target=_run_scan_thread,
+            args=(vdr_path, company_name.upper(), deal_id, sector, deal_type, selected_batches),
+            daemon=True,
         )
-        update_scan(
-            company,
-            status="completed",
-            phase="done",
-            rating=rating,
-            progress={"signals_found": total_signals, "step": "Scan complete"},
-        )
-        # Update deal status
-        try:
-            update_deal(deal_id, scan_status="completed", current_phase="scan_complete")
-        except Exception:
-            pass
-    except Exception as exc:
-        update_scan(company, status="failed", error=str(exc)[:500])
-        try:
-            update_deal(deal_id, scan_status="failed")
-        except Exception:
-            pass
+        thread.start()
+        st.rerun()
 
-
-if st.button("🚀 Launch Scan", disabled=not ready or st.session_state.scan_running, type="primary", use_container_width=True):
-    # Update deal's VDR path if user changed it
-    if update_vdr and vdr_path:
-        update_deal(deal_id, vdr_path=vdr_path)
-
-    # Register in scan_registry
-    vdr_doc_count = sum(1 for _ in Path(vdr_path).rglob("*") if _.is_file()) if Path(vdr_path).exists() else 0
-    register_scan(
-        company_name=company_name.upper(),
-        deal_id=deal_id,
-        sector=sector,
-        deal_type=deal_type,
-        scan_mode="full",
-        total_vdr_docs=vdr_doc_count,
-    )
-
-    # Update deal status
-    update_deal(deal_id, scan_status="in_progress", current_phase="vdr_scan")
-
-    st.session_state.scan_running = True
-    st.session_state.scan_company = company_name.upper()
-
-    thread = threading.Thread(
-        target=_run_scan_thread,
-        args=(vdr_path, company_name.upper(), deal_id, sector, deal_type),
-        daemon=True,
-    )
-    thread.start()
-    st.rerun()
-
-# ── Progress display ────────────────────────────────────────────────────────
+# ── Live progress display ───────────────────────────────────────────────────
 if st.session_state.scan_running and st.session_state.scan_company:
     company = st.session_state.scan_company
     st.markdown("---")
-    st.subheader(f"Scan in progress: {company}")
-
-    progress_placeholder = st.empty()
-    status_placeholder = st.empty()
+    st.subheader(f"📡 Live Scan: {company}")
 
     scan = get_scan(company)
     if scan:
@@ -269,12 +388,11 @@ if st.session_state.scan_running and st.session_state.scan_company:
             st.error(f"❌ Scan failed: {scan.get('error', 'Unknown error')}")
 
         else:
-            # Still running — show rich progress
+            # Live progress
             batches_done = progress.get("batches_done", 0)
             batches_total = progress.get("batches_total", 0)
             step_text = progress.get("step", f"Phase: {phase}")
 
-            # Phase-based progress estimate (4 phases)
             phase_pct = {
                 "starting": 0.0,
                 "mapping_vdr": 0.05,
@@ -284,9 +402,8 @@ if st.session_state.scan_running and st.session_state.scan_company:
                 "writing_outputs": 0.95,
             }.get(phase, 0.0)
 
-            progress_placeholder.progress(phase_pct, text=step_text)
+            st.progress(phase_pct, text=step_text)
 
-            # KPI row
             kpi1, kpi2, kpi3, kpi4 = st.columns(4)
             kpi1.metric("Documents", progress.get("doc_count", "—"))
             kpi2.metric("Batches", f"{batches_done}/{batches_total}" if batches_total else "—")
@@ -301,6 +418,5 @@ if st.session_state.scan_running and st.session_state.scan_company:
             if gaps is not None:
                 st.caption(f"Gaps identified: {gaps}")
 
-            # Auto-refresh while running
             time.sleep(3)
             st.rerun()
