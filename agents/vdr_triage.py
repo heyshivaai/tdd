@@ -33,6 +33,7 @@ from tools.report_writer import (
     write_intelligence_brief,
     write_triage_report,
 )
+from tools.scan_registry import update_scan
 from tools.signal_extractor import extract_signals_from_batch
 from tools.signal_store import query_similar_patterns, store_gap, store_signals
 from tools.structure_mapper import map_vdr_structure
@@ -64,12 +65,19 @@ def run_triage(
     All four output files are written to outputs/<company_name>/.
     """
     logger.info("Step 1: Mapping VDR structure — %s", vdr_path)
+    update_scan(company_name, phase="mapping_vdr", progress={"step": "Step 1/4: Mapping VDR structure"})
     vdr_map = map_vdr_structure(vdr_path, str(BATCH_RULES_PATH))
     inventory = vdr_map["inventory"]
     batch_groups = vdr_map["batch_groups"]
     logger.info("Inventory: %d files across %d batch groups", len(inventory), len(batch_groups))
+    update_scan(company_name, progress={
+        "doc_count": len(inventory),
+        "batches_total": len(batch_groups),
+        "step": f"Step 1/4 complete: {len(inventory)} files, {len(batch_groups)} batches",
+    })
 
     logger.info("Step 2: Checking completeness")
+    update_scan(company_name, phase="completeness_check", progress={"step": "Step 2/4: Checking completeness"})
     with open(EXPECTED_DOCS_PATH) as f:
         expected_docs = json.load(f)
     completeness = check_completeness(
@@ -85,8 +93,16 @@ def run_triage(
         len(completeness["missing_documents"]),
     )
 
+    update_scan(company_name, progress={
+        "completeness_score": completeness["completeness_score"],
+        "gaps_found": len(completeness["missing_documents"]),
+        "step": f"Step 2/4 complete: score {completeness['completeness_score']}/100, {len(completeness['missing_documents'])} gaps",
+    })
+
     logger.info("Step 3: Signal extraction per batch")
+    update_scan(company_name, phase="signal_extraction", progress={"step": "Step 3/4: Signal extraction"})
     all_batch_results = []
+    batch_index = 0
     for batch_id, docs in batch_groups.items():
         enriched_docs = []
         for doc in docs:
@@ -106,6 +122,12 @@ def run_triage(
             all_batch_results.append(
                 {"batch_id": batch_id, "documents": [d["filename"] for d in docs], "signals": [], "batch_summary": ""}
             )
+            batch_index += 1
+            update_scan(company_name, progress={
+                "batches_done": batch_index,
+                "step": f"Step 3/4: Batch {batch_index}/{len(batch_groups)} — {batch_id} (skipped, no text)",
+                "current_batch": batch_id,
+            })
             continue
 
         # Phase B: Query Signal Intelligence Layer for prior patterns
@@ -129,12 +151,23 @@ def run_triage(
         signal_count = len(batch_result.get("signals", []))
         logger.info("  Batch %s: %d signals extracted, %d prior patterns used",
                     batch_id, signal_count, len(prior_patterns))
+        batch_index += 1
+        total_signals_so_far = sum(len(b.get("signals", [])) for b in all_batch_results)
+        update_scan(company_name, progress={
+            "batches_done": batch_index,
+            "signals_found": total_signals_so_far,
+            "step": f"Step 3/4: Batch {batch_index}/{len(batch_groups)} — {batch_id} ({signal_count} signals)",
+            "current_batch": batch_id,
+        })
 
         # Store signals in Signal Intelligence Layer
         if batch_result.get("signals"):
             store_signals(batch_result["signals"], deal_id=deal_id, sector=sector, phase=0)
 
     logger.info("Step 4: Cross-referencing into VDR Intelligence Brief")
+    update_scan(company_name, phase="cross_referencing", progress={
+        "step": "Step 4/4: Cross-referencing signals into intelligence brief",
+    })
     brief = cross_reference_signals(
         all_batch_results=all_batch_results,
         inventory=inventory,

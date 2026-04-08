@@ -198,10 +198,19 @@ def _run_scan_thread(vdr_path: str, company: str, deal_id: str, sector: str, dea
             status="completed",
             phase="done",
             rating=rating,
-            progress={"signals_found": total_signals},
+            progress={"signals_found": total_signals, "step": "Scan complete"},
         )
+        # Update deal status
+        try:
+            update_deal(deal_id, scan_status="completed", current_phase="scan_complete")
+        except Exception:
+            pass
     except Exception as exc:
         update_scan(company, status="failed", error=str(exc)[:500])
+        try:
+            update_deal(deal_id, scan_status="failed")
+        except Exception:
+            pass
 
 
 if st.button("🚀 Launch Scan", disabled=not ready or st.session_state.scan_running, type="primary", use_container_width=True):
@@ -260,17 +269,37 @@ if st.session_state.scan_running and st.session_state.scan_company:
             st.error(f"❌ Scan failed: {scan.get('error', 'Unknown error')}")
 
         else:
-            # Still running
+            # Still running — show rich progress
             batches_done = progress.get("batches_done", 0)
             batches_total = progress.get("batches_total", 0)
-            pct = batches_done / batches_total if batches_total > 0 else 0
+            step_text = progress.get("step", f"Phase: {phase}")
 
-            progress_placeholder.progress(pct, text=f"Phase: {phase}")
-            status_placeholder.markdown(
-                f"**Batches:** {batches_done}/{batches_total} · "
-                f"**Signals found:** {progress.get('signals_found', 0)} · "
-                f"**Docs processed:** {progress.get('doc_count', 0)}"
-            )
+            # Phase-based progress estimate (4 phases)
+            phase_pct = {
+                "starting": 0.0,
+                "mapping_vdr": 0.05,
+                "completeness_check": 0.15,
+                "signal_extraction": 0.2 + (0.6 * (batches_done / batches_total if batches_total > 0 else 0)),
+                "cross_referencing": 0.85,
+                "writing_outputs": 0.95,
+            }.get(phase, 0.0)
+
+            progress_placeholder.progress(phase_pct, text=step_text)
+
+            # KPI row
+            kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+            kpi1.metric("Documents", progress.get("doc_count", "—"))
+            kpi2.metric("Batches", f"{batches_done}/{batches_total}" if batches_total else "—")
+            kpi3.metric("Signals Found", progress.get("signals_found", 0))
+            kpi4.metric("Completeness", f"{progress.get('completeness_score', '—')}/100")
+
+            current_batch = progress.get("current_batch", "")
+            if current_batch:
+                st.caption(f"Currently processing: **{current_batch}**")
+
+            gaps = progress.get("gaps_found")
+            if gaps is not None:
+                st.caption(f"Gaps identified: {gaps}")
 
             # Auto-refresh while running
             time.sleep(3)
