@@ -30,3 +30,5 @@ VDR/
 VDR/
 .env.txt
 .claude-flow/
+
+notepad.env.txt
