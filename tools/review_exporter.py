@@ -31,6 +31,75 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 logger = logging.getLogger(__name__)
 
+
+def _format_evidence_for_excel(evidence: Any) -> str:
+    """
+    Convert structured evidence (list of typed dicts) into readable multi-line text
+    suitable for an Excel cell.
+
+    Handles both legacy string evidence and the new structured format:
+      [{"type": "signal", "signal_id": "SIG-001", "detail": "..."},
+       {"type": "document", "source_doc": "...", "excerpt": "..."},
+       {"type": "prior_agent", "agent": "Riley", "finding_id": "SEC-01", "detail": "..."},
+       {"type": "missing", "expected": "...", "detail": "..."},
+       {"type": "inference", "detail": "..."}]
+
+    Args:
+        evidence: Raw evidence value — str, list, dict, or None.
+
+    Returns:
+        Formatted string with one line per evidence item, max 1500 chars.
+    """
+    if not evidence:
+        return ""
+    if isinstance(evidence, str):
+        return evidence[:1500]
+    if isinstance(evidence, dict):
+        return json.dumps(evidence, default=str)[:1500]
+    if not isinstance(evidence, list):
+        return str(evidence)[:1500]
+
+    lines = []
+    for ev in evidence:
+        if not isinstance(ev, dict):
+            lines.append(str(ev))
+            continue
+        ev_type = ev.get("type", "")
+        detail = ev.get("detail", "")
+        if ev_type == "signal":
+            sig_id = ev.get("signal_id", "")
+            lines.append(f"[Signal {sig_id}] {detail}")
+        elif ev_type == "document":
+            doc = ev.get("source_doc", "Unknown")
+            excerpt = ev.get("excerpt", "")
+            line = f"[Doc: {doc}] {detail}"
+            if excerpt:
+                line += f' — "{excerpt[:150]}"'
+            lines.append(line)
+        elif ev_type == "prior_agent":
+            agent = ev.get("agent", "?")
+            fid = ev.get("finding_id", "")
+            lines.append(f"[Agent {agent} → {fid}] {detail}")
+        elif ev_type == "missing":
+            expected = ev.get("expected", "")
+            lines.append(f"[Missing: {expected}] {detail}")
+        elif ev_type == "inference":
+            lines.append(f"[Inference] {detail}")
+        else:
+            lines.append(detail or str(ev))
+
+    return "\n".join(lines)[:1500]
+
+
+def _format_source_signals(source_signals: Any) -> str:
+    """Format source_signals list into comma-separated string for Excel."""
+    if not source_signals:
+        return ""
+    if isinstance(source_signals, list):
+        return ", ".join(str(s) for s in source_signals)
+    return str(source_signals)
+
+
 # ---------------------------------------------------------------------------
 # Style constants
 # ---------------------------------------------------------------------------
@@ -295,8 +364,8 @@ GATE2_FINDING_HEADERS = [
     # System columns (blue)
     "Finding ID", "Agent", "Agent Confidence", "Domain", "Title",
     "Severity", "Confidence", "Confidence Reason", "Evidence",
-    "Deal Implication", "Review Urgency", "Review Reason",
-    # Practitioner columns (gold) — starts at col 13
+    "Source Signals", "Deal Implication", "Review Urgency", "Review Reason",
+    # Practitioner columns (gold) — starts at col 14
     "Verdict", "Adjusted Severity", "Practitioner Note",
     "Priority", "Remediation Effort", "Additional Evidence Source",
     "Follow-up Owner",
@@ -316,12 +385,12 @@ GATE2_CHASE_HEADERS = [
 ]
 
 GATE2_FINDING_WIDTHS = {
-    1: 16, 2: 12, 3: 16, 4: 28, 5: 50,
-    6: 12, 7: 12, 8: 40, 9: 50,
-    10: 40, 11: 14, 12: 50,
-    13: 14, 14: 16, 15: 40,
-    16: 10, 17: 18, 18: 30,
-    19: 20,
+    1: 16, 2: 12, 3: 16, 4: 28, 5: 50,      # ID, Agent, Conf, Domain, Title
+    6: 12, 7: 12, 8: 40, 9: 55,              # Severity, Conf, Reason, Evidence
+    10: 25, 11: 40, 12: 14, 13: 50,          # Source Signals, Deal Imp, Urgency, Reason
+    14: 14, 15: 16, 16: 40,                  # Verdict, Adj Severity, Note
+    17: 10, 18: 18, 19: 30,                  # Priority, Remediation, Add Evidence
+    20: 20,                                   # Follow-up Owner
 }
 
 
@@ -360,25 +429,27 @@ def export_gate2_workbook(
         ws_findings.cell(row=row_idx, column=6, value=item.get("severity", ""))
         ws_findings.cell(row=row_idx, column=7, value=item.get("confidence", ""))
         ws_findings.cell(row=row_idx, column=8, value=item.get("confidence_reason", ""))
-        evidence = item.get("evidence", "")
-        if isinstance(evidence, dict):
-            evidence = json.dumps(evidence, default=str)
-        ws_findings.cell(row=row_idx, column=9, value=str(evidence)[:500])
-        ws_findings.cell(row=row_idx, column=10, value=item.get("deal_implication", ""))
-        ws_findings.cell(row=row_idx, column=11, value=item.get("review_urgency", ""))
-        ws_findings.cell(row=row_idx, column=12, value=item.get("review_reason", ""))
+        # Evidence — format structured arrays into readable multi-line text
+        evidence_text = _format_evidence_for_excel(item.get("evidence", ""))
+        ws_findings.cell(row=row_idx, column=9, value=evidence_text)
+        ws_findings.cell(row=row_idx, column=9).alignment = Alignment(wrap_text=True, vertical="top")
+        # Source Signals — new column
+        ws_findings.cell(row=row_idx, column=10, value=_format_source_signals(item.get("source_signals", [])))
+        ws_findings.cell(row=row_idx, column=11, value=item.get("deal_implication", ""))
+        ws_findings.cell(row=row_idx, column=12, value=item.get("review_urgency", ""))
+        ws_findings.cell(row=row_idx, column=13, value=item.get("review_reason", ""))
 
     num_findings = len(findings)
-    _style_header_row(ws_findings, len(GATE2_FINDING_HEADERS), 13)
-    _style_data_rows(ws_findings, num_findings, len(GATE2_FINDING_HEADERS), urgency_col=11)
+    _style_header_row(ws_findings, len(GATE2_FINDING_HEADERS), 14)
+    _style_data_rows(ws_findings, num_findings, len(GATE2_FINDING_HEADERS), urgency_col=12)
     _set_column_widths(ws_findings, GATE2_FINDING_WIDTHS)
 
     if num_findings > 0:
         max_row = num_findings + 1
-        _add_dropdown(ws_findings, "M", ["CONFIRMED", "NOISE", "UNCERTAIN"], 2, max_row)
-        _add_dropdown(ws_findings, "N", ["CRITICAL", "HIGH", "MEDIUM", "LOW"], 2, max_row)
-        _add_dropdown(ws_findings, "P", ["P1", "P2", "P3", "P4"], 2, max_row)
-        _add_dropdown(ws_findings, "Q", ["S", "M", "L", "XL"], 2, max_row)
+        _add_dropdown(ws_findings, "N", ["CONFIRMED", "NOISE", "UNCERTAIN"], 2, max_row)
+        _add_dropdown(ws_findings, "O", ["CRITICAL", "HIGH", "MEDIUM", "LOW"], 2, max_row)
+        _add_dropdown(ws_findings, "Q", ["P1", "P2", "P3", "P4"], 2, max_row)
+        _add_dropdown(ws_findings, "R", ["S", "M", "L", "XL"], 2, max_row)
 
     # --- Blind Spots sheet ---
     ws_blind = wb.create_sheet("Blind Spots")

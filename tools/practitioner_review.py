@@ -274,7 +274,8 @@ def generate_gate2_manifest(
                     "severity": finding.get("rating", finding.get("severity", "")),
                     "confidence": finding.get("confidence", ""),
                     "confidence_reason": finding.get("confidence_reason", ""),
-                    "evidence": finding.get("evidence", ""),
+                    "evidence": finding.get("evidence", finding.get("evidence_quote", "")),
+                    "source_signals": finding.get("source_signals", []),
                     "deal_implication": finding.get("deal_implication", ""),
                     "review_urgency": urgency,
                     "review_reason": _finding_review_reason(
@@ -303,6 +304,46 @@ def generate_gate2_manifest(
                     "has_resolution_data": "",  # YES | NO
                     "follow_up_owner": "",
                 })
+
+        # Also extract from tasks > task_N > findings (riley, casey, taylor)
+        tasks_dict = inner.get("tasks", {})
+        if isinstance(tasks_dict, dict) and not finding_items:
+            for task_key, task_data in tasks_dict.items():
+                if not isinstance(task_data, dict):
+                    continue
+                task_findings = task_data.get("findings", [])
+                if not isinstance(task_findings, list):
+                    continue
+                task_domain = task_key.replace("task_", "").replace("_", " ").title()
+                for finding in task_findings:
+                    if not isinstance(finding, dict):
+                        continue
+                    urgency = _classify_finding_urgency(finding, agent_confidence)
+                    finding_items.append({
+                        "item_id": finding.get("finding_id", ""),
+                        "item_type": "agent_finding",
+                        "agent": agent_name,
+                        "agent_confidence": agent_confidence,
+                        "domain": task_domain,
+                        "title": finding.get("observation", finding.get("title", ""))[:120],
+                        "severity": finding.get("rating", finding.get("severity", "")),
+                        "confidence": finding.get("confidence", ""),
+                        "confidence_reason": finding.get("confidence_reason", ""),
+                        "evidence": finding.get("evidence", finding.get("evidence_quote", "")),
+                        "source_signals": finding.get("source_signals", []),
+                        "deal_implication": finding.get("deal_implication", finding.get("business_impact", "")),
+                        "review_urgency": urgency,
+                        "review_reason": _finding_review_reason(
+                            finding, agent_name, agent_confidence, urgency,
+                        ),
+                        "verdict": "",
+                        "adjusted_severity": "",
+                        "practitioner_note": "",
+                        "priority": "",
+                        "remediation_effort": "",
+                        "additional_evidence_source": "",
+                        "follow_up_owner": "",
+                    })
 
         # Agent-level blind spots
         if agent_confidence in ("LOW", "MISSING"):
