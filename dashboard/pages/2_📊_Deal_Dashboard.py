@@ -1308,7 +1308,6 @@ with _dl2:
         _agent_reports = {}
         if _agents_dir.exists():
             for _af in _agents_dir.glob("*.json"):
-                # Use get_agent_output for resilient JSON repair of truncated files
                 _parsed = get_agent_output(
                     brief.get("deal_id", selected_company), _af.stem
                 )
@@ -1319,7 +1318,13 @@ with _dl2:
             brief.get("deal_id", selected_company), selected_company,
         )
         save_review_manifest(_g2_manifest)
-        export_gate2_workbook(_g2_manifest)
+        # Build signal_id -> metadata lookup so Excel shows actual file names
+        _signal_lookup = {}
+        for _sig in brief.get("signals", []):
+            _sid = _sig.get("signal_id", "")
+            if _sid:
+                _signal_lookup[_sid] = _sig
+        export_gate2_workbook(_g2_manifest, signal_lookup=_signal_lookup)
 
     if _gate2_xlsx.exists():
         with open(_gate2_xlsx, "rb") as _f:

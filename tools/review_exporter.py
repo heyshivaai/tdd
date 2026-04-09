@@ -32,10 +32,13 @@ from openpyxl.worksheet.datavalidation import DataValidation
 logger = logging.getLogger(__name__)
 
 
-def _format_evidence_for_excel(evidence: Any) -> str:
+def _format_evidence_for_excel(evidence: Any, signal_lookup: dict | None = None) -> str:
     """
     Convert structured evidence (list of typed dicts) into readable multi-line text
     suitable for an Excel cell.
+
+    When a signal_lookup is provided, resolves signal IDs to actual VDR file
+    names so practitioners see "Employee Roster.xlsx" not "SIG-003".
 
     Handles both legacy string evidence and the new structured format:
       [{"type": "signal", "signal_id": "SIG-001", "detail": "..."},
@@ -46,6 +49,7 @@ def _format_evidence_for_excel(evidence: Any) -> str:
 
     Args:
         evidence: Raw evidence value — str, list, dict, or None.
+        signal_lookup: Optional dict mapping signal_id -> signal metadata.
 
     Returns:
         Formatted string with one line per evidence item, max 1500 chars.
@@ -68,11 +72,19 @@ def _format_evidence_for_excel(evidence: Any) -> str:
         detail = ev.get("detail", "")
         if ev_type == "signal":
             sig_id = ev.get("signal_id", "")
-            lines.append(f"[Signal {sig_id}] {detail}")
+            # Resolve signal ID to source document name
+            source_file = ""
+            if signal_lookup and sig_id:
+                sig_meta = signal_lookup.get(sig_id, {})
+                source_file = sig_meta.get("source_doc", "")
+            if source_file:
+                lines.append(f"[Source: {source_file}] {detail}")
+            else:
+                lines.append(f"[Signal {sig_id}] {detail}")
         elif ev_type == "document":
             doc = ev.get("source_doc", "Unknown")
             excerpt = ev.get("excerpt", "")
-            line = f"[Doc: {doc}] {detail}"
+            line = f"[Source: {doc}] {detail}"
             if excerpt:
                 line += f' — "{excerpt[:150]}"'
             lines.append(line)
@@ -91,13 +103,46 @@ def _format_evidence_for_excel(evidence: Any) -> str:
     return "\n".join(lines)[:1500]
 
 
-def _format_source_signals(source_signals: Any) -> str:
-    """Format source_signals list into comma-separated string for Excel."""
+def _format_source_signals(source_signals: Any, signal_lookup: dict | None = None) -> str:
+    """
+    Format source_signals into readable source document references for Excel.
+
+    When a signal_lookup is provided (signal_id -> {source_doc, title, ...}),
+    resolves opaque IDs like "SIG-006" into the actual VDR file names
+    practitioners can recognize, e.g. "Q3 Financial Model.xlsx".
+
+    Args:
+        source_signals: List of signal IDs or raw value.
+        signal_lookup: Optional dict mapping signal_id -> signal metadata
+                       (must contain 'source_doc' key).
+
+    Returns:
+        Formatted string with source file names, or raw IDs if no lookup.
+    """
     if not source_signals:
         return ""
-    if isinstance(source_signals, list):
+    if not isinstance(source_signals, list):
+        return str(source_signals)
+
+    if signal_lookup:
+        docs = []
+        for sig_id in source_signals:
+            sig = signal_lookup.get(str(sig_id), {})
+            source_doc = sig.get("source_doc", "")
+            if source_doc:
+                docs.append(source_doc)
+            else:
+                docs.append(str(sig_id))
+        # Deduplicate while preserving order
+        seen = set()
+        unique = []
+        for d in docs:
+            if d not in seen:
+                seen.add(d)
+                unique.append(d)
+        return "\n".join(unique)
+    else:
         return ", ".join(str(s) for s in source_signals)
-    return str(source_signals)
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +409,7 @@ GATE2_FINDING_HEADERS = [
     # System columns (blue)
     "Finding ID", "Agent", "Agent Confidence", "Domain", "Title",
     "Severity", "Confidence", "Confidence Reason", "Evidence",
-    "Source Signals", "Deal Implication", "Review Urgency", "Review Reason",
+    "Source Documents", "Deal Implication", "Review Urgency", "Review Reason",
     # Practitioner columns (gold) — starts at col 14
     "Verdict", "Adjusted Severity", "Practitioner Note",
     "Priority", "Remediation Effort", "Additional Evidence Source",
@@ -397,6 +442,7 @@ GATE2_FINDING_WIDTHS = {
 def export_gate2_workbook(
     manifest: dict,
     output_path: Path | str | None = None,
+    signal_lookup: dict | None = None,
 ) -> Path:
     """
     Generate the Gate 2 practitioner review Excel workbook.
@@ -404,6 +450,8 @@ def export_gate2_workbook(
     Args:
         manifest: Gate 2 review manifest from practitioner_review.generate_gate2_manifest().
         output_path: Where to save. Defaults to outputs/<company>/review_gate2.xlsx.
+        signal_lookup: Optional dict mapping signal_id -> signal metadata from VDR brief.
+                       Used to resolve opaque signal IDs to actual source document names.
 
     Returns:
         Path to the generated Excel file.
@@ -430,11 +478,12 @@ def export_gate2_workbook(
         ws_findings.cell(row=row_idx, column=7, value=item.get("confidence", ""))
         ws_findings.cell(row=row_idx, column=8, value=item.get("confidence_reason", ""))
         # Evidence — format structured arrays into readable multi-line text
-        evidence_text = _format_evidence_for_excel(item.get("evidence", ""))
+        evidence_text = _format_evidence_for_excel(item.get("evidence", ""), signal_lookup=signal_lookup)
         ws_findings.cell(row=row_idx, column=9, value=evidence_text)
         ws_findings.cell(row=row_idx, column=9).alignment = Alignment(wrap_text=True, vertical="top")
-        # Source Signals — new column
-        ws_findings.cell(row=row_idx, column=10, value=_format_source_signals(item.get("source_signals", [])))
+        # Source Documents — resolve signal IDs to actual file names
+        ws_findings.cell(row=row_idx, column=10, value=_format_source_signals(item.get("source_signals", []), signal_lookup=signal_lookup))
+        ws_findings.cell(row=row_idx, column=10).alignment = Alignment(wrap_text=True, vertical="top")
         ws_findings.cell(row=row_idx, column=11, value=item.get("deal_implication", ""))
         ws_findings.cell(row=row_idx, column=12, value=item.get("review_urgency", ""))
         ws_findings.cell(row=row_idx, column=13, value=item.get("review_reason", ""))
