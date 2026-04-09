@@ -218,6 +218,54 @@ with action_col1:
             st.rerun()
 
 with action_col2:
+    # Re-run full chain from scratch
+    if st.button("🔄 Re-run Full Chain", use_container_width=True,
+                 disabled=(completed == 0 and next_agent is not None),
+                 help="Reset all agents and run the entire chain from scratch"):
+        # Reset all agents to pending
+        for agent_def_r in AGENT_CHAIN:
+            update_agent_status(selected_deal_id, agent_def_r["name"], "pending")
+
+        if "running_chain" not in st.session_state:
+            st.session_state.running_chain = False
+
+        st.session_state.running_chain = True
+
+        def _rerun_chain_thread(deal_id):
+            """Re-run entire chain from scratch."""
+            try:
+                import anthropic
+                from dotenv import load_dotenv
+
+                load_dotenv()
+                api_key = os.environ.get("ANTHROPIC_API_KEY")
+                if not api_key:
+                    st.session_state.running_chain = False
+                    return
+
+                seed_deal_state_from_vdr(deal_id)
+                client = anthropic.Anthropic(api_key=api_key)
+
+                for agent_def_r in AGENT_CHAIN:
+                    try:
+                        run_agent(deal_id, agent_def_r["name"], client)
+                    except Exception:
+                        pass
+
+                st.session_state.running_chain = False
+            except Exception:
+                st.session_state.running_chain = False
+
+        thread = threading.Thread(
+            target=_rerun_chain_thread,
+            args=(selected_deal_id,),
+            daemon=True,
+        )
+        thread.start()
+        st.rerun()
+
+action_col3, _ = st.columns(2)
+with action_col3:
     if st.button("🚀 Run Full Chain", disabled=(next_agent is None), use_container_width=True):
         if next_agent:
             if "running_chain" not in st.session_state:
@@ -307,6 +355,128 @@ st.subheader("Agent Reports")
 st.caption("Expand any agent to see full findings, evidence chains, and download the raw report.")
 
 import json as _json
+from datetime import datetime as _dt
+
+
+def _build_agent_report_md(agent_name: str, agent_label: str, company: str,
+                            grade: str, confidence: str, summary_text: str,
+                            findings: list, report: dict, completed_at: str) -> str:
+    """Build a polished Markdown report for a single agent."""
+    lines = []
+    lines.append(f"# {agent_label}")
+    lines.append(f"**Company:** {company}  ")
+    lines.append(f"**Agent:** {agent_name}  ")
+    lines.append(f"**Grade:** {grade}  ")
+    lines.append(f"**Confidence:** {confidence}  ")
+    if completed_at:
+        lines.append(f"**Completed:** {completed_at[:16].replace('T', ' ')}  ")
+    lines.append("")
+
+    if summary_text:
+        lines.append("## Executive Summary")
+        lines.append(summary_text)
+        lines.append("")
+
+    if findings:
+        sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+        sorted_findings = sorted(findings, key=lambda x: sev_order.get(x.get("severity", "LOW").upper(), 99))
+
+        lines.append(f"## Findings ({len(sorted_findings)})")
+        lines.append("")
+
+        for idx, f in enumerate(sorted_findings, 1):
+            f_title = f.get("title", f.get("finding", f.get("observation", "Untitled")))
+            f_sev = f.get("severity", f.get("rating", f.get("risk_level", "MEDIUM"))).upper()
+            f_desc = f.get("description", f.get("detail", f.get("observation", "")))
+            f_impact = f.get("deal_implication", f.get("business_impact", f.get("impact", "")))
+            f_evidence = f.get("evidence", f.get("evidence_quote", ""))
+            f_remediation = f.get("remediation", {})
+            f_question = f.get("question_for_target", "")
+            f_confidence = f.get("confidence", "")
+
+            sev_tag = {"CRITICAL": "🔴 CRITICAL", "HIGH": "🟠 HIGH", "MEDIUM": "🟡 MEDIUM", "LOW": "🟢 LOW"}.get(f_sev, f_sev)
+            lines.append(f"### {idx}. [{sev_tag}] {f_title}")
+            lines.append("")
+
+            if f_desc:
+                lines.append(f_desc)
+                lines.append("")
+
+            # Evidence
+            if f_evidence and isinstance(f_evidence, str):
+                lines.append(f"**Evidence:** *\"{f_evidence}\"*")
+                lines.append("")
+            elif f_evidence and isinstance(f_evidence, list):
+                lines.append("**Evidence:**")
+                for ev in f_evidence:
+                    if not isinstance(ev, dict):
+                        continue
+                    ev_type = ev.get("type", "")
+                    ev_detail = ev.get("detail", "")
+                    if ev_type == "signal":
+                        lines.append(f"- 📡 **Signal {ev.get('signal_id', '')}:** {ev_detail}")
+                    elif ev_type == "document":
+                        _doc = ev.get("source_doc", "Unknown")
+                        _excerpt = ev.get("excerpt", "")
+                        lines.append(f"- 📄 **{_doc}:** {ev_detail}")
+                        if _excerpt:
+                            lines.append(f'  > *"{_excerpt}"*')
+                    elif ev_type == "prior_agent":
+                        lines.append(f"- 🤖 **{ev.get('agent', 'Agent')} → {ev.get('finding_id', '')}:** {ev_detail}")
+                    elif ev_type == "missing":
+                        lines.append(f"- ❌ **Missing — {ev.get('expected', '')}:** {ev_detail}")
+                    elif ev_type == "inference":
+                        lines.append(f"- 💡 *{ev_detail}*")
+                lines.append("")
+
+            # Source signals
+            src_sigs = f.get("source_signals", [])
+            if src_sigs:
+                lines.append(f"**Source Signals:** {', '.join(src_sigs)}")
+                lines.append("")
+
+            if f_impact:
+                lines.append(f"**Business Impact:** {f_impact}")
+                lines.append("")
+
+            if f_confidence:
+                reason = f.get("confidence_reason", "")
+                lines.append(f"**Confidence:** {f_confidence}" + (f" — {reason}" if reason else ""))
+                lines.append("")
+
+            if isinstance(f_remediation, dict) and f_remediation:
+                lines.append(f"**Remediation:** {f_remediation.get('recommendation', f_remediation.get('action', str(f_remediation)))}")
+                lines.append("")
+
+            if f_question:
+                lines.append(f"**Question for Target:** {f_question}")
+                lines.append("")
+
+            lines.append("---")
+            lines.append("")
+
+    # Chase questions
+    if report:
+        agent_questions = []
+        for qkey in ["priority_questions_for_next_agents", "priority_questions_for_riley",
+                      "priority_questions_for_casey", "priority_questions_for_taylor",
+                      "priority_questions_for_drew", "follow_on_questions", "questions"]:
+            qs = report.get(qkey, [])
+            if isinstance(qs, list) and qs:
+                agent_questions = qs
+                break
+
+        if agent_questions:
+            lines.append("## Questions for Downstream Agents")
+            lines.append("")
+            for i, q in enumerate(agent_questions, 1):
+                q_text = q.get("question", str(q)) if isinstance(q, dict) else str(q)
+                lines.append(f"{i}. {q_text}")
+            lines.append("")
+
+    lines.append("---")
+    lines.append(f"*Generated by TDD Platform on {_dt.now().strftime('%Y-%m-%d %H:%M')}*")
+    return "\n".join(lines)
 
 # Report key mapping — agent name to the key inside the JSON that holds the report
 _REPORT_KEYS = {
@@ -377,7 +547,7 @@ for agent_def in AGENT_CHAIN:
         elif not isinstance(summary_text, str):
             summary_text = str(summary_text)
 
-        # Findings
+        # Findings — check top-level lists first
         for fkey in ["domain_findings", "findings", "key_findings", "critical_findings"]:
             val = report.get(fkey, [])
             if isinstance(val, list):
@@ -393,17 +563,40 @@ for agent_def in AGENT_CHAIN:
                 if findings:
                     break
 
-        # Compound risks as additional findings
-        for ckey in ["combination_signals", "compound_risks", "compound_signals"]:
-            combos = report.get(ckey, [])
-            if isinstance(combos, list):
-                for combo in combos:
-                    if isinstance(combo, dict):
-                        findings.append({
-                            "title": combo.get("signal_id", "") + ": " + combo.get("combined_observation", combo.get("title", ""))[:80],
-                            "severity": combo.get("severity", "HIGH"),
-                            "description": combo.get("combined_observation", combo.get("narrative", "")),
-                        })
+        # Also check tasks > task_N > findings (riley, casey, taylor structure)
+        if not findings:
+            tasks_val = report.get("tasks", {})
+            if isinstance(tasks_val, dict):
+                for task_key, task_data in tasks_val.items():
+                    if isinstance(task_data, dict):
+                        task_findings = task_data.get("findings", [])
+                        if isinstance(task_findings, list):
+                            for tf in task_findings:
+                                if isinstance(tf, dict):
+                                    findings.append(tf)
+
+        # Compound risks as additional findings (top-level or inside tasks)
+        _compound_sources = [report]
+        # Drew nests compound risks under task_2_compound_risks
+        tasks_dict = report.get("tasks", {})
+        if isinstance(tasks_dict, dict):
+            for tk, tv in tasks_dict.items():
+                if isinstance(tv, dict):
+                    _compound_sources.append(tv)
+
+        for _src in _compound_sources:
+            for ckey in ["combination_signals", "compound_risks", "compound_signals"]:
+                combos = _src.get(ckey, [])
+                if isinstance(combos, list):
+                    for combo in combos:
+                        if isinstance(combo, dict):
+                            findings.append({
+                                "title": combo.get("signal_id", combo.get("risk_id", "")) + ": " + combo.get("combined_observation", combo.get("title", combo.get("narrative", "")))[:80],
+                                "severity": combo.get("severity", "HIGH"),
+                                "description": combo.get("combined_observation", combo.get("narrative", "")),
+                                "evidence": combo.get("contributing_findings", combo.get("evidence", "")),
+                                "source_signals": combo.get("source_signals", []),
+                            })
 
     # Build expander label
     if status == "completed" and grade != "—":
@@ -437,6 +630,32 @@ for agent_def in AGENT_CHAIN:
                 st.info("⏳ Agent is currently running...")
             elif status == "failed":
                 st.error("❌ Agent failed. Check logs or re-run.")
+                # Offer re-run for failed agents
+                if st.button(f"🔄 Re-run {agent_name}", key=f"rerun_failed_{agent_name}", use_container_width=True):
+                    update_agent_status(selected_deal_id, agent_name, "pending")
+                    st.session_state.running_agent = agent_name
+
+                    def _rerun_single(deal_id, a_name):
+                        try:
+                            import anthropic
+                            from dotenv import load_dotenv
+                            load_dotenv()
+                            api_key = os.environ.get("ANTHROPIC_API_KEY")
+                            if not api_key:
+                                update_agent_status(deal_id, a_name, "failed")
+                                st.session_state.running_agent = None
+                                return
+                            seed_deal_state_from_vdr(deal_id)
+                            client = anthropic.Anthropic(api_key=api_key)
+                            run_agent(deal_id, a_name, client)
+                            st.session_state.running_agent = None
+                        except Exception:
+                            update_agent_status(deal_id, a_name, "failed")
+                            st.session_state.running_agent = None
+
+                    thread = threading.Thread(target=_rerun_single, args=(selected_deal_id, agent_name), daemon=True)
+                    thread.start()
+                    st.rerun()
             else:
                 st.caption("Agent has not run yet.")
             continue
@@ -461,17 +680,92 @@ for agent_def in AGENT_CHAIN:
                 unsafe_allow_html=True,
             )
 
-        # Download raw JSON
-        if output:
-            _json_bytes = _json.dumps(output, indent=2, default=str).encode("utf-8")
-            st.download_button(
-                f"📥 Download {agent_name} report (JSON)",
-                data=_json_bytes,
-                file_name=f"{selected_deal['company_name']}_{agent_name}_report.json",
-                mime="application/json",
-                use_container_width=True,
-                key=f"dl_{agent_name}",
-            )
+        # Download raw JSON + Re-run buttons
+        _btn_col1, _btn_col2, _btn_col3 = st.columns(3)
+        with _btn_col1:
+            if output:
+                _md_report = _build_agent_report_md(
+                    agent_name=agent_name,
+                    agent_label=agent_label,
+                    company=selected_deal["company_name"],
+                    grade=grade,
+                    confidence=str(confidence),
+                    summary_text=summary_text,
+                    findings=findings,
+                    report=report,
+                    completed_at=completed_at or "",
+                )
+                st.download_button(
+                    f"📥 Download report",
+                    data=_md_report.encode("utf-8"),
+                    file_name=f"{selected_deal['company_name']}_{agent_name}_report.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                    key=f"dl_{agent_name}",
+                )
+        with _btn_col2:
+            if st.button(f"🔄 Re-run {agent_name}", key=f"rerun_{agent_name}", use_container_width=True,
+                         help=f"Reset and re-run this agent only"):
+                update_agent_status(selected_deal_id, agent_name, "pending")
+                st.session_state.running_agent = agent_name
+
+                def _rerun_one(deal_id, a_name):
+                    try:
+                        import anthropic
+                        from dotenv import load_dotenv
+                        load_dotenv()
+                        api_key = os.environ.get("ANTHROPIC_API_KEY")
+                        if not api_key:
+                            update_agent_status(deal_id, a_name, "failed")
+                            st.session_state.running_agent = None
+                            return
+                        seed_deal_state_from_vdr(deal_id)
+                        client = anthropic.Anthropic(api_key=api_key)
+                        run_agent(deal_id, a_name, client)
+                        st.session_state.running_agent = None
+                    except Exception:
+                        update_agent_status(deal_id, a_name, "failed")
+                        st.session_state.running_agent = None
+
+                thread = threading.Thread(target=_rerun_one, args=(selected_deal_id, agent_name), daemon=True)
+                thread.start()
+                st.rerun()
+        with _btn_col3:
+            # "Re-run from here" — reset this agent + all downstream, then run chain
+            _agent_idx = [a["name"] for a in AGENT_CHAIN].index(agent_name)
+            _downstream_names = [a["name"] for a in AGENT_CHAIN[_agent_idx:]]
+            _downstream_count = len(_downstream_names)
+            if st.button(f"🔄 Re-run from here ({_downstream_count} agents)", key=f"rerun_from_{agent_name}",
+                         use_container_width=True,
+                         help=f"Reset {agent_name} and all downstream agents, then run chain"):
+                for _dn in _downstream_names:
+                    update_agent_status(selected_deal_id, _dn, "pending")
+
+                st.session_state.running_chain = True
+
+                def _rerun_from(deal_id, downstream):
+                    try:
+                        import anthropic
+                        from dotenv import load_dotenv
+                        load_dotenv()
+                        api_key = os.environ.get("ANTHROPIC_API_KEY")
+                        if not api_key:
+                            st.session_state.running_chain = False
+                            return
+                        seed_deal_state_from_vdr(deal_id)
+                        client = anthropic.Anthropic(api_key=api_key)
+                        for a_name in downstream:
+                            try:
+                                run_agent(deal_id, a_name, client)
+                            except Exception:
+                                pass
+                        st.session_state.running_chain = False
+                    except Exception:
+                        st.session_state.running_chain = False
+
+                thread = threading.Thread(target=_rerun_from, args=(selected_deal_id, _downstream_names), daemon=True)
+                thread.start()
+                st.rerun()
 
         # Findings
         if findings:

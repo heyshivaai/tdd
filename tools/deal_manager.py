@@ -15,6 +15,7 @@ across agent runs. This module is the source of truth for all deal metadata and 
 
 import json
 import logging
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -396,16 +397,94 @@ def save_agent_output(deal_id: str, agent_name: str, output: dict) -> str:
     return str(output_file.absolute())
 
 
+def _repair_truncated_json(raw: str) -> Optional[dict]:
+    """
+    Attempt to repair JSON that was truncated mid-output by the LLM.
+
+    Claude API responses sometimes hit max_tokens and produce valid JSON
+    that's cut off partway through.  This function:
+      1. Strips any trailing partial string (unterminated quote).
+      2. Closes all open brackets/braces in reverse order.
+      3. Tries json.loads on the repaired string.
+
+    Why: Agent outputs can be 15-25 KB of nested JSON.  Losing an entire
+    report because the last 200 chars were clipped is unacceptable for
+    practitioner workflows.
+
+    Args:
+        raw: The raw (possibly truncated) JSON string.
+
+    Returns:
+        Parsed dict if repair succeeds, None otherwise.
+    """
+    text = raw.rstrip()
+
+    # Strip trailing partial string value (unterminated quote).
+    # Strategy: if odd number of quotes, the last string is truncated.
+    # Walk backward to find the *opening* quote of the incomplete string
+    # and chop everything from that quote onward.
+    if text.count('"') % 2 != 0:
+        # Find the last quote — this is the opening of the unterminated string
+        last_q = text.rfind('"')
+        if last_q > 0:
+            text = text[:last_q]
+
+    # Remove trailing comma, colon, partial tokens, or lone key strings
+    # Repeat until stable (handles "key": "trunca  →  "key"  →  clean)
+    prev = None
+    while prev != text:
+        prev = text
+        text = re.sub(r'[,:\s]+$', '', text)
+        # Remove trailing orphan key (a quoted string after last comma with no value)
+        text = re.sub(r',\s*"[^"]*"\s*$', '', text)
+
+    # Close open brackets/braces
+    stack = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch in ('{', '['):
+            stack.append(ch)
+        elif ch == '}' and stack and stack[-1] == '{':
+            stack.pop()
+        elif ch == ']' and stack and stack[-1] == '[':
+            stack.pop()
+
+    # Append closing tokens in reverse
+    closers = {'[': ']', '{': '}'}
+    for opener in reversed(stack):
+        text += closers[opener]
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+
 def get_agent_output(deal_id: str, agent_name: str) -> Optional[dict]:
     """
     Load a specific agent's output from disk.
+
+    Falls back to a repair heuristic if the JSON is truncated (common when
+    the Claude API response hits max_tokens mid-output).
 
     Args:
         deal_id: Deal identifier.
         agent_name: Name of the agent.
 
     Returns:
-        Agent output dict, or None if not found.
+        Agent output dict, or None if not found / unrecoverable.
     """
     output_file = OUTPUTS_DIR / deal_id / "agents" / f"{agent_name}.json"
     if not output_file.exists():
@@ -413,8 +492,22 @@ def get_agent_output(deal_id: str, agent_name: str) -> Optional[dict]:
     try:
         with open(output_file, "r") as f:
             return json.load(f)
-    except (json.JSONDecodeError, IOError) as exc:
-        logger.warning(f"Failed to load agent output for {agent_name}: {exc}")
+    except json.JSONDecodeError as exc:
+        logger.warning(f"Malformed JSON for {agent_name}, attempting repair: {exc}")
+        try:
+            raw = output_file.read_text()
+            repaired = _repair_truncated_json(raw)
+            if repaired:
+                logger.info(f"Successfully repaired truncated JSON for {agent_name}")
+                return repaired
+            else:
+                logger.error(f"JSON repair failed for {agent_name}")
+                return None
+        except Exception as repair_exc:
+            logger.error(f"JSON repair exception for {agent_name}: {repair_exc}")
+            return None
+    except IOError as exc:
+        logger.warning(f"Failed to read agent output for {agent_name}: {exc}")
         return None
 
 
