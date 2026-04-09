@@ -1298,6 +1298,29 @@ with _dl1:
             st.caption("Run VDR scan first")
 
 with _dl2:
+
+    def _regenerate_gate2_xlsx():
+        """Regenerate the Gate 2 Excel from agent outputs using the resilient JSON parser."""
+        from tools.practitioner_review import generate_gate2_manifest, save_review_manifest
+        from tools.review_exporter import export_gate2_workbook
+        from tools.deal_manager import get_agent_output
+        _agents_dir = OUTPUTS_DIR / selected_company / "agents"
+        _agent_reports = {}
+        if _agents_dir.exists():
+            for _af in _agents_dir.glob("*.json"):
+                # Use get_agent_output for resilient JSON repair of truncated files
+                _parsed = get_agent_output(
+                    brief.get("deal_id", selected_company), _af.stem
+                )
+                if _parsed:
+                    _agent_reports[_af.stem] = _parsed
+        _g2_manifest = generate_gate2_manifest(
+            _agent_reports, domain_data,
+            brief.get("deal_id", selected_company), selected_company,
+        )
+        save_review_manifest(_g2_manifest)
+        export_gate2_workbook(_g2_manifest)
+
     if _gate2_xlsx.exists():
         with open(_gate2_xlsx, "rb") as _f:
             st.download_button(
@@ -1321,23 +1344,19 @@ with _dl2:
                 '<div class="review-badge pending">⏳ Awaiting practitioner review</div>',
                 unsafe_allow_html=True,
             )
+        # Regenerate button so practitioners get fresh exports after code changes
+        if has_agent_data and st.button("🔄 Regenerate Excel", use_container_width=True, key="regen_g2",
+                                         help="Re-export with latest findings and source attribution"):
+            try:
+                _regenerate_gate2_xlsx()
+                st.success("Regenerated! Refresh page to download.")
+                st.rerun()
+            except Exception as _exc:
+                st.error(f"Failed to regenerate: {_exc}")
     else:
         if has_agent_data and st.button("⚙️ Generate Agent Finding Review", use_container_width=True, key="gen_g2"):
             try:
-                from tools.practitioner_review import generate_gate2_manifest, save_review_manifest
-                from tools.review_exporter import export_gate2_workbook
-                _agents_dir = OUTPUTS_DIR / selected_company / "agents"
-                _agent_reports = {}
-                if _agents_dir.exists():
-                    for _af in _agents_dir.glob("*.json"):
-                        with open(_af) as _fh:
-                            _agent_reports[_af.stem] = json.load(_fh)
-                _g2_manifest = generate_gate2_manifest(
-                    _agent_reports, domain_data,
-                    brief.get("deal_id", selected_company), selected_company,
-                )
-                save_review_manifest(_g2_manifest)
-                export_gate2_workbook(_g2_manifest)
+                _regenerate_gate2_xlsx()
                 st.success("Agent Finding Review workbook generated!")
                 st.rerun()
             except Exception as _exc:
