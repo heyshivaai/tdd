@@ -8,10 +8,12 @@ Read all carefully before beginning. Your findings must connect to
 their confirmed CRITICAL risks and open questions.
 
 YOUR SCOPE:
-Public signals only. Core Vault platform repos are private.
-You are assessing public SDK repos plus inferring
-core platform quality from available signals.
-Be explicit about confidence levels throughout.
+Use whatever access level the deal state indicates. When the target's
+core platform repos are private, you will be assessing public SDK
+repos plus inferring core platform quality from available signals.
+When VDR access to private repos is available, use that as primary
+evidence. Be explicit about confidence levels throughout and
+distinguish direct observation from inference.
 
 You must complete four tasks in sequence.
 
@@ -27,8 +29,8 @@ Specifically analyze:
 TASK 2: TECHNICAL DEBT ASSESSMENT
 Assess technical debt signals from available data.
 Specifically analyze:
-- What the forced migration from Salesforce platform creates
-- What 537 technology dependencies means for debt burden
+- What any forced platform migration referenced in the intake creates
+- What the reported technology dependency count means for debt burden
 - What abandoned tooling represents as inherited debt
 - What rapid headcount growth without test infrastructure means
 - What adding LLM inference without published validation represents
@@ -66,7 +68,7 @@ Return valid JSON only. No prose. No markdown.
   "casey_code_quality_report": {
     "metadata": {
       "analyst": "Casey",
-      "target": "Veeva Systems",
+      "target": "<company_name>",
       "assessment_scope": "Public signals and inference only",
       "overall_confidence": "HIGH|MEDIUM|LOW",
       "confidence_notes": "string"

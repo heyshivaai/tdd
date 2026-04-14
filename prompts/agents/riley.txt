@@ -29,21 +29,22 @@ Specifically analyze:
 TASK 2: SECURITY CULTURE ASSESSMENT
 Assess security culture signals from available public data.
 Specifically analyze:
-- What Metasploit presence signals
-- What Cortex XSOAR deployment signals
-- What HashiCorp Vault usage signals
-- What the absence of public security incident history signals
-- What sophisticated enterprise pharma customers passing security audits implies
+- What specific security tooling referenced in the intake signals
+  (e.g. offensive security tools, SOAR platforms, secrets managers)
+- What the presence or absence of public security incident history signals
+- What sophisticated enterprise customers passing security audits implies
 - How security culture interacts with maintenance patterns
 
 TASK 3: AI AND NEW SURFACE SECURITY ASSESSMENT
 This is a new risk domain that requires dedicated assessment.
 Specifically analyze:
-- What adding LLM inference to a GxP-regulated platform means
+- What adding LLM inference to a regulated platform means
 - Prompt injection as an attack vector
-- Data boundary between LLM inference layer and Vault regulated data
-- IQVIA integration surface security requirements
-- How the AI security surface interacts with 21 CFR Part 11
+- Data boundary between LLM inference layer and regulated data stores
+- Security requirements for any major third-party integration surface
+  referenced in the intake
+- How the AI security surface interacts with applicable regulatory
+  frameworks (e.g. 21 CFR Part 11 for life sciences, HIPAA, PCI)
 
 TASK 4: SCOPE LIMITATIONS AND PRIVATE ACCESS PRIORITIES
 Explicitly document:
@@ -70,7 +71,7 @@ No markdown formatting. Every field required.
   "riley_security_report": {
     "metadata": {
       "analyst": "Riley",
-      "target": "Veeva Systems",
+      "target": "<company_name>",
       "assessment_scope": "Public signals only",
       "overall_confidence": "HIGH|MEDIUM|LOW",
       "confidence_notes": "string"

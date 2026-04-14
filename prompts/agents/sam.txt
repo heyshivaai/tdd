@@ -112,7 +112,7 @@ top-level keys:
     "metadata": {
       "analyst": "Sam",
       "report_type": "Pre-LOI Technology Assessment",
-      "target": "Veeva Systems",
+      "target": "<company_name>",
       "assessment_date": "February 2026",
       "data_basis": "Public signals only — no private access",
       "prepared_by": "Joyn TDD Practice — AI Staff"

@@ -25,15 +25,15 @@ Specifically analyze:
 - What API management presence signals
 - What multi-region global footprint requires
 - What parallel platform operation means for complexity
-- What the Salesforce separation requires
+- What any major platform separation or re-platforming work requires
 
 TASK 2: INFRASTRUCTURE COST EFFICIENCY ASSESSMENT
 Assess cost efficiency signals in limited access mode.
 Specifically analyze:
 - What running parallel platforms means for cost trajectory
 - What adding LLM inference infrastructure means for unit economics
-- What 537 technology dependencies means for licensing and maintenance
-- What IQVIA integration requires
+- What the reported technology dependency footprint means for licensing and maintenance
+- What any major third-party integration referenced in the intake requires
 - What global multi-region operation costs at this scale
 
 TASK 3: GXP INFRASTRUCTURE COMPLIANCE ASSESSMENT
@@ -69,7 +69,7 @@ Return valid JSON only. No prose. No markdown.
   "taylor_infrastructure_report": {
     "metadata": {
       "analyst": "Taylor",
-      "target": "Veeva Systems",
+      "target": "<company_name>",
       "assessment_scope": "Limited access — public signals and inference",
       "overall_confidence": "HIGH|MEDIUM|LOW",
       "confidence_notes": "string"

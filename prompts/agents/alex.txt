@@ -23,7 +23,7 @@ Classify this company into the correct benchmark peer group.
 Specify
 - Primary peer group which companies are the right comparables
 - Why this peer group is appropriate
-- What makes Veeva atypical within this peer group if anything
+- What makes this company atypical within this peer group if anything
 - Which benchmarks will be most and least applicable
 
 TASK 3 SECTOR-SPECIFIC RISK WEIGHTINGS
@@ -118,46 +118,7 @@ Every field is required. No field may be left empty.
 
 INTAKE DATA
 
-Company Name Veeva Systems
-Ticker VEEV
-Sector Life sciences tech-enabled services
-Sub-sector Vertical SaaS for pharmaceutical and biotech industry
-Headquarters Pleasanton, California
-Founded 2007
-PublicPrivate Public — NYSE listed
-Corporate Structure Public Benefit Corporation since January 2021
-Revenue TTM $3.08B
-Market Cap $30.7B
-Employee Count 7,291 (targeting 10,000 by 2025)
-Primary Products
-  - Veeva Vault regulated content and information management platform
-  - Veeva CRM multichannel customer relationship management for
-    life sciences sales forces
-  - Veeva Network master data management for customer and product data
-  - Veeva OpenData customer reference data service
-Customer Base 1,477+ customers including Bayer, Eli Lilly, Gilead,
-  Merck, Novartis, Boehringer Ingelheim — ranging from global pharma
-  to emerging biotech
-Market Position Global market leader in cloud software for life sciences
-Geographic Footprint HQ California, offices in Canada, Europe, Asia,
-  Latin America, Work Anywhere remote-first engineering culture
-Business Model Cloud SaaS subscription plus professional services,
-  high renewal rates, deep enterprise customer relationships
-Primary Technology Stack Signals
-  - Primary languages Java, Python, JavaScript
-  - Infrastructure AWS, Kubernetes, containerized microservices
-  - Security HashiCorp Vault for secrets management,
-    AWS IAM, Metasploit, Cortex XSOAR
-  - Development Full stack distributed cloud infrastructure
-  - Mobile iOS, Android, Windows tablet applications
-Public GitHub 25 public repositories — primarily Vault SDK tooling
-  and API libraries, Java dominant
-Recent Strategic Moves
-  - Ended Salesforce partnership 2025 after years of dependency
-  - Partnered with IQVIA August 2025 after ending trade secrets litigation
-  - Launched AI features for Vault and CRM applications April 2025
-  - Converted to Public Benefit Corporation 2021
-  - Acquired Veracity Logic December 2021
-Assessment Type Pre-LOI screening simulation
-Deal Context Demonstrating AI staff capability for tech due diligence
-Access Level Public signals only — no private repo or system access
+Intake data for the current deal will be provided in the user message
+as a structured VDR brief containing company profile, signals, and
+source documents. Base your analysis strictly on that intake — do not
+assume any specific target company, sector, or prior deal context.

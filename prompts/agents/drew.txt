@@ -74,7 +74,7 @@ Return valid JSON only. No prose. No markdown.
   "drew_benchmarking_report": {
     "metadata": {
       "analyst": "Drew",
-      "target": "Veeva Systems",
+      "target": "<company_name>",
       "benchmark_peer_group": "string",
       "overall_confidence": "HIGH|MEDIUM|LOW",
       "confidence_notes": "string"

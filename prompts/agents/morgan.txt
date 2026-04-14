@@ -66,7 +66,7 @@ Return only valid JSON. No prose before or after. No markdown.
   "morgan_intelligence_report": {
     "metadata": {
       "analyst": "Morgan",
-      "target": "Veeva Systems",
+      "target": "<company_name>",
       "data_sources": ["string"],
       "overall_confidence": "HIGH|MEDIUM|LOW",
       "confidence_notes": "string"
